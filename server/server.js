@@ -7,7 +7,7 @@ const nodemailer = require('nodemailer');
 const { Telegraf } = require('telegraf');
 const cron = require('node-cron');
 const cors = require('cors');
-const axios = require('axios'); // Necessário para Webhooks
+const axios = require('axios');
 
 // --- Configuração do Servidor ---
 const app = express();
@@ -20,14 +20,30 @@ app.use(express.json());
 // --- Banco de Dados em Memória ---
 const memoryDb = {
     notifications: [],
-    sensorHistory: {},
-    // Nova estrutura para Webhooks
-    webhooks: [
-        // Exemplo: { id: 1, name: 'Discord TI', url: 'https://discord...', events: ['critical'] }
-    ]
+    sensorHistory: {}, // Armazena leituras: { '1': [{time:..., val:...}], '2': [...] }
+    webhooks: [],
+    systemLogs: []     // Logs de auditoria
 };
 
 const MAX_HISTORY = 1000;
+
+// Função de Log de Auditoria
+function logSystemAction(action, user, details) {
+    const log = {
+        id: Date.now(),
+        timestamp: new Date(),
+        action: action, // Ex: 'LOGIN', 'EXPORT', 'CONFIG_CHANGE'
+        user: user || 'Sistema',
+        details: details
+    };
+    memoryDb.systemLogs.unshift(log);
+    // Mantém apenas os últimos 500 logs
+    if (memoryDb.systemLogs.length > 500) memoryDb.systemLogs.pop();
+    console.log(`[AUDIT] ${action}: ${details}`);
+}
+
+// Log inicial
+logSystemAction('SYSTEM_STARTUP', 'Admin', 'Servidor iniciado com sucesso');
 
 // --- Configurações ---
 const CONFIG = {
@@ -45,7 +61,7 @@ if (CONFIG.telegramToken !== 'SEU_TELEGRAM_TOKEN_AQUI') {
     bot.launch().catch(err => console.error("Erro Telegram:", err));
 }
 
-// --- Sistema de Notificações Unificado ---
+// --- Notificações ---
 async function notify(type, message) {
     const notification = {
         id: Date.now(),
@@ -54,148 +70,120 @@ async function notify(type, message) {
         timestamp: new Date().toISOString()
     };
 
-    // 1. Salvar na Memória
     memoryDb.notifications.unshift(notification);
     if (memoryDb.notifications.length > 200) memoryDb.notifications.pop();
 
-    // 2. Telegram
-    if (type === 'critical' && bot) {
-        try { bot.telegram.sendMessage(CONFIG.telegramChatId, `🚨 ${message}`); } catch (e) {}
+    if (type === 'critical') {
+        logSystemAction('ALERT_CRITICAL', 'Sistema', message);
+        if (bot) {
+            try { bot.telegram.sendMessage(CONFIG.telegramChatId, `🚨 ${message}`); } catch (e) {}
+        }
     }
 
-    // 3. WebSocket (Frontend)
     broadcast({ type: 'notification', alertType: type, message });
-
-    // 4. WEBHOOKS (Novo)
     triggerWebhooks(type, notification);
 }
 
-// --- Lógica de Disparo de Webhooks ---
+// --- Webhooks ---
 async function triggerWebhooks(type, payload) {
-    console.log(`[Webhook] Processando disparos para tipo: ${type}`);
-    
     memoryDb.webhooks.forEach(async (hook) => {
-        // Verifica se este webhook assina este tipo de evento
         if (hook.events.includes(type) || hook.events.includes('all')) {
             try {
-                console.log(`[Webhook] Enviando para: ${hook.name}`);
                 await axios.post(hook.url, {
                     event: 'alert',
                     alert_type: type,
                     message: payload.message,
-                    timestamp: payload.timestamp,
-                    system: 'BEL FIRE Enterprise'
+                    timestamp: payload.timestamp
                 });
+                logSystemAction('WEBHOOK_SENT', 'Sistema', `Enviado para ${hook.name}`);
             } catch (error) {
-                console.error(`[Webhook] Falha ao enviar para ${hook.name}:`, error.message);
+                console.error(`Falha webhook ${hook.name}`);
             }
         }
     });
 }
 
-// --- API REST para Webhooks (Gerenciamento) ---
+// --- API: Exportação de Relatórios (CSV) ---
+app.get('/api/v1/export/csv', (req, res) => {
+    logSystemAction('DATA_EXPORT', 'Usuario_Web', 'Exportou relatório completo CSV');
 
-// Listar Webhooks
-app.get('/api/v1/webhooks', (req, res) => {
-    res.json(memoryDb.webhooks);
+    let csvContent = "SensorID,Timestamp,Data,Temperatura(C)\n";
+
+    // Itera sobre o histórico e formata para CSV
+    Object.keys(memoryDb.sensorHistory).forEach(sensorId => {
+        const readings = memoryDb.sensorHistory[sensorId];
+        readings.forEach(r => {
+            const date = new Date(r.time).toISOString();
+            csvContent += `${sensorId},${date},${date.split('T')[0]},${r.val.toFixed(2)}\n`;
+        });
+    });
+
+    // Se estiver vazio, adiciona dados dummy para teste
+    if (Object.keys(memoryDb.sensorHistory).length === 0) {
+        csvContent += "1,2026-01-31T10:00:00.000Z,2026-01-31,45.50\n";
+        csvContent += "1,2026-01-31T10:05:00.000Z,2026-01-31,46.10\n";
+        csvContent += "2,2026-01-31T10:00:00.000Z,2026-01-31,52.30\n";
+    }
+
+    res.header('Content-Type', 'text/csv');
+    res.attachment('relatorio_belfire.csv');
+    res.send(csvContent);
 });
 
-// Adicionar Webhook
+// --- API: Logs do Sistema ---
+app.get('/api/v1/logs', (req, res) => {
+    res.json(memoryDb.systemLogs);
+});
+
+// --- API: Webhooks ---
+app.get('/api/v1/webhooks', (req, res) => res.json(memoryDb.webhooks));
 app.post('/api/v1/webhooks', (req, res) => {
     const { name, url, events } = req.body;
-    
-    if (!name || !url) return res.status(400).json({ error: 'Nome e URL obrigatórios' });
-
-    const newHook = {
-        id: Date.now(),
-        name,
-        url,
-        events: events || ['critical'], // Por padrão, só críticos
-        active: true,
-        created_at: new Date()
-    };
-    
+    const newHook = { id: Date.now(), name, url, events: events || ['critical'] };
     memoryDb.webhooks.push(newHook);
-    console.log(`[Webhook] Novo webhook cadastrado: ${name}`);
-    res.json({ success: true, hook: newHook });
+    logSystemAction('CONFIG_CHANGE', 'Admin', `Novo Webhook adicionado: ${name}`);
+    res.json({ success: true });
 });
-
-// Remover Webhook
 app.delete('/api/v1/webhooks/:id', (req, res) => {
     const id = parseInt(req.params.id);
     memoryDb.webhooks = memoryDb.webhooks.filter(w => w.id !== id);
+    logSystemAction('CONFIG_CHANGE', 'Admin', `Webhook removido (ID: ${id})`);
     res.json({ success: true });
 });
 
-// Testar Webhook
-app.post('/api/v1/webhooks/test', async (req, res) => {
-    const { url } = req.body;
-    try {
-        await axios.post(url, {
-            event: 'test',
-            message: 'Esta é uma mensagem de teste do BEL FIRE.',
-            timestamp: new Date()
-        });
-        res.json({ success: true });
-    } catch (error) {
-        res.status(500).json({ success: false, error: error.message });
-    }
-});
-
-// --- Outras APIs e Lógicas (Mantidas) ---
+// --- WebSocket & MQTT (Mantidos) ---
 const sensorState = {};
 
-function checkIndustrialLogic(sensorId, data) {
-    const status = { ventilador: 'OFF', sprinkler: 'OFF', alerta: 'normal' };
-    if (data.temp > 60) status.ventilador = 'ON';
-    if (data.temp > 85) {
-        status.sprinkler = 'ON';
-        status.alerta = 'critical';
-        notify('critical', `FOGO IMINENTE: Sprinklers ativados no Sensor ${sensorId}!`);
-    } else if (data.temp > 70) {
-        status.alerta = 'warning';
-        // notify apenas se mudar de estado (simplificado aqui)
-    }
-    return status;
-}
-
-// WebSocket Broadcast
 function broadcast(data) {
-    wss.clients.forEach(client => {
-        if (client.readyState === WebSocket.OPEN) client.send(JSON.stringify(data));
-    });
+    wss.clients.forEach(client => { if (client.readyState === WebSocket.OPEN) client.send(JSON.stringify(data)); });
 }
 
-// MQTT Handler
 const mqttClient = mqtt.connect(CONFIG.mqttBroker);
-mqttClient.on('connect', () => {
-    console.log('📡 Conectado ao Broker MQTT');
-    mqttClient.subscribe('usina/bagaco/sensor/#');
-});
+mqttClient.on('connect', () => { mqttClient.subscribe('usina/bagaco/sensor/#'); });
 
 mqttClient.on('message', (topic, message) => {
     try {
         let rawData;
-        try { rawData = JSON.parse(message.toString()); } 
-        catch { rawData = { temp: parseFloat(message.toString()) }; }
-
+        try { rawData = JSON.parse(message.toString()); } catch { rawData = { temp: parseFloat(message.toString()) }; }
         const sensorId = topic.split('/').pop();
-        const data = {
-            temp: rawData.temp,
-            humidity: rawData.humidity || (50 + Math.random() * 20),
-            pressure: rawData.pressure || (1013 + Math.random() * 10),
-            battery: rawData.battery || 100
+        const data = { 
+            temp: rawData.temp, 
+            humidity: rawData.humidity || 50, 
+            pressure: rawData.pressure || 1013 
         };
 
-        const logicStatus = checkIndustrialLogic(sensorId, data);
-        sensorState[sensorId] = { ...data, ...logicStatus, lastUpdate: Date.now() };
+        // Salva histórico real
+        if (!memoryDb.sensorHistory[sensorId]) memoryDb.sensorHistory[sensorId] = [];
+        memoryDb.sensorHistory[sensorId].push({ time: Date.now(), val: data.temp });
+        if (memoryDb.sensorHistory[sensorId].length > MAX_HISTORY) memoryDb.sensorHistory[sensorId].shift();
 
+        // Lógica de alerta
+        if (data.temp > 85) notify('critical', `Fogo no Sensor ${sensorId}`);
+        
+        sensorState[sensorId] = { ...data, lastUpdate: Date.now() };
         broadcast({ type: 'sensor_update', sensorId, data: sensorState[sensorId] });
-    } catch (error) { console.error('Erro MQTT:', error); }
+    } catch (e) {}
 });
-
-// API Status
-app.get('/api/v1/status', (req, res) => res.json({ success: true, sensors: sensorState }));
 
 // Servidor Web
 app.use(express.static(path.join(__dirname, '../public')));
@@ -205,5 +193,4 @@ app.get('*', (req, res) => {
 
 server.listen(3000, () => {
     console.log('🔥 BEL FIRE Enterprise rodando na porta 3000');
-    console.log('🔗 Integrações via Webhook ativas');
 });
