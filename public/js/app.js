@@ -1,6 +1,6 @@
 /**
  * BEL FIRE - Core Application Logic
- * Inclui: WebSocket, i18n, Atalhos e Gestão de Dados
+ * Inclui: WebSocket, i18n, Atalhos, Gestão de Dados e PWA (Offline)
  */
 
 // --- Configuração de Idiomas ---
@@ -44,7 +44,7 @@ class SystemController {
     constructor() {
         this.socket = null;
         this.currentLang = localStorage.getItem('belfire_lang') || 'pt';
-        this.isDarkMode = localStorage.getItem('belfire_theme') === 'dark';
+        this.isDarkMode = localStorage.getItem('belfire_theme') !== 'light'; // Default Dark
         
         this.init();
     }
@@ -54,6 +54,7 @@ class SystemController {
         this.setupKeyboardShortcuts();
         this.applyTheme();
         this.applyLanguage(this.currentLang);
+        this.registerServiceWorker(); // PWA
         
         // Atualiza relógio
         setInterval(() => this.updateClock(), 1000);
@@ -63,7 +64,6 @@ class SystemController {
 
     // --- WebSocket ---
     setupWebSocket() {
-        // Detecção automática do host (funciona local e em rede)
         const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
         const wsUrl = `${protocol}//${window.location.host}`;
         
@@ -95,49 +95,40 @@ class SystemController {
     handleSensorUpdate(msg) {
         const { sensorId, data } = msg;
         
-        // Atualiza Cards de Sensores (se existirem na tela)
-        const card = document.querySelector(`[data-sensor="${sensorId}"]`);
+        // Atualiza Cards de Sensores (se existirem na tela - Dashboard/Index)
+        const card = document.querySelector(`[data-sensor="${sensorId}"]`) || document.getElementById(`card-${sensorId}`);
+        
         if (card) {
-            // Atualiza Texto
-            const tempEl = document.getElementById(`sensor-${sensorId}-temp`);
+            // Atualiza Texto Temp
+            const tempEl = document.getElementById(`sensor-${sensorId}-temp`) || document.getElementById(`temp-${sensorId}`);
             if (tempEl) tempEl.textContent = `${data.temp.toFixed(1)}°C`;
             
-            // Novos Campos: Umidade e Pressão (se você adicionar ao HTML depois)
+            // Novos Campos
             const humidEl = document.getElementById(`sensor-${sensorId}-humid`);
             if (humidEl) humidEl.textContent = `${data.humidity.toFixed(0)}%`;
 
-            // Indicadores Visuais de Sprinkler/Ventilador
+            // Indicadores Visuais de Sprinkler/Ventilador (Dashboard)
             if (data.sprinkler === 'ON') {
-                card.classList.add('sprinkler-active'); // Classe CSS para efeito visual
+                card.classList.add('sprinkler-active');
                 this.showToast(`💦 Sprinkler ativado no Sensor ${sensorId}!`, 'critical');
             } else {
                 card.classList.remove('sprinkler-active');
             }
 
             // Atualiza classes de alerta
-            card.className = `sensor-card ${data.alerta}`;
+            card.className = card.className.replace(/normal|warning|critical/g, ''); // Limpa anteriores
+            card.classList.add(data.alerta || 'normal');
+            
             if (data.sprinkler === 'ON') card.classList.add('critical-animation');
         }
         
-        // Se estiver no Dashboard principal (Gauge)
-        if (sensorId === '1') { // Exemplo: Sensor 1 é o principal
+        // Se estiver no Dashboard principal (Gauge do Sensor 1 como exemplo)
+        if (sensorId === '1' && typeof this.updateMainGauge === 'function') {
             this.updateMainGauge(data.temp);
         }
     }
 
-    updateMainGauge(temp) {
-        const gaugeVal = document.getElementById('gauge-value');
-        const gaugeFill = document.getElementById('gauge-fill');
-        
-        if (gaugeVal) gaugeVal.textContent = temp.toFixed(1);
-        if (gaugeFill) {
-            const rotation = Math.min(180, (temp / 100) * 180);
-            gaugeFill.style.transform = `rotate(${rotation}deg)`;
-        }
-    }
-
     handleNotification(msg) {
-        // Exibe notificação visual
         const banner = document.getElementById('alert-banner');
         const msgSpan = document.getElementById('alert-message');
         
@@ -145,29 +136,28 @@ class SystemController {
             msgSpan.textContent = msg.message;
             banner.style.display = 'flex';
             
-            // Sons de alerta
-            if (msg.alertType === 'critical') this.playAlertSound();
+            if (msg.alertType === 'critical') {
+                banner.style.background = 'linear-gradient(90deg, #ef4444, #b91c1c)';
+                this.playAlertSound();
+            } else {
+                banner.style.background = '#3b82f6';
+            }
+
+            // Auto-hide após 10s
+            setTimeout(() => { banner.style.display = 'none'; }, 10000);
         }
     }
 
     // --- Interface e UX ---
     setupKeyboardShortcuts() {
         document.addEventListener('keydown', (e) => {
-            // Atalhos com ALT + Tecla
             if (e.altKey) {
                 switch(e.key.toLowerCase()) {
-                    case 'd': // Dashboard
-                        window.location.href = 'dashboard.html';
-                        break;
-                    case 'c': // Câmeras
-                        window.location.href = 'index.html'; // ou cameras.html
-                        break;
-                    case 't': // Alternar Tema
-                        this.toggleTheme();
-                        break;
-                    case 'l': // Alternar Idioma
-                        this.cycleLanguage();
-                        break;
+                    case 'd': window.location.href = 'dashboard.html'; break;
+                    case 'c': window.location.href = 'index.html'; break;
+                    case '3': window.location.href = 'monitor3d.html'; break;
+                    case 't': this.toggleTheme(); break;
+                    case 'l': this.cycleLanguage(); break;
                 }
             }
         });
@@ -180,11 +170,8 @@ class SystemController {
     }
 
     applyTheme() {
-        if (this.isDarkMode) {
-            document.body.classList.add('dark-mode');
-        } else {
-            document.body.classList.remove('dark-mode');
-        }
+        if (this.isDarkMode) document.body.classList.add('dark-mode');
+        else document.body.classList.remove('dark-mode');
     }
 
     cycleLanguage() {
@@ -198,7 +185,6 @@ class SystemController {
 
     applyLanguage(lang) {
         const t = translations[lang];
-        // Exemplo simples de tradução de elementos com data-i18n
         document.querySelectorAll('[data-i18n]').forEach(el => {
             const key = el.getAttribute('data-i18n');
             if (t[key]) el.textContent = t[key];
@@ -209,7 +195,8 @@ class SystemController {
         const statusEl = document.querySelector('.system-status span');
         const dot = document.querySelector('.status-dot');
         if (statusEl && dot) {
-            statusEl.textContent = isOnline ? translations[this.currentLang].online : translations[this.currentLang].disconnected;
+            const text = isOnline ? translations[this.currentLang].online : translations[this.currentLang].disconnected;
+            statusEl.textContent = text;
             dot.style.backgroundColor = isOnline ? '#10b981' : '#ef4444';
         }
     }
@@ -221,20 +208,45 @@ class SystemController {
     }
 
     playAlertSound() {
-        // Implementação simples de beep
-        const ctx = new (window.AudioContext || window.webkitAudioContext)();
-        const osc = ctx.createOscillator();
-        osc.type = 'sawtooth';
-        osc.frequency.setValueAtTime(440, ctx.currentTime);
-        osc.frequency.exponentialRampToValueAtTime(880, ctx.currentTime + 0.1);
-        osc.connect(ctx.destination);
-        osc.start();
-        osc.stop(ctx.currentTime + 0.5);
+        try {
+            const ctx = new (window.AudioContext || window.webkitAudioContext)();
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.type = 'sawtooth';
+            osc.frequency.setValueAtTime(440, ctx.currentTime);
+            osc.frequency.exponentialRampToValueAtTime(880, ctx.currentTime + 0.1);
+            gain.gain.setValueAtTime(0.1, ctx.currentTime);
+            osc.start();
+            osc.stop(ctx.currentTime + 0.5);
+        } catch(e) { console.log("Áudio bloqueado pelo navegador"); }
     }
     
     showToast(msg, type) {
-        // Lógica simples de toast/notificação flutuante
         console.log(`[${type.toUpperCase()}] ${msg}`);
+    }
+
+    // --- PWA & OFFLINE SUPPORT ---
+    registerServiceWorker() {
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js')
+                    .then(registration => console.log('✅ PWA Registrado:', registration.scope))
+                    .catch(err => console.log('❌ Erro PWA:', err));
+            });
+        }
+
+        // Listeners de Status de Rede
+        window.addEventListener('online', () => {
+            document.body.classList.remove('offline-mode');
+            this.handleNotification({ message: 'Conexão Restaurada! Sincronizando...', alertType: 'info' });
+        });
+
+        window.addEventListener('offline', () => {
+            document.body.classList.add('offline-mode');
+            this.handleNotification({ message: 'VOCÊ ESTÁ OFFLINE. Modo Local Ativado.', alertType: 'warning' });
+        });
     }
 }
 

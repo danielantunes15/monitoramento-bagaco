@@ -1,0 +1,21 @@
+{
+  "name": "BEL FIRE Enterprise",
+  "short_name": "BEL FIRE",
+  "start_url": "/index.html",
+  "display": "standalone",
+  "background_color": "#0f172a",
+  "theme_color": "#ef4444",
+  "description": "Sistema de Monitoramento Industrial de Prevenção de Incêndios",
+  "icons": [
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/765/765667.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/765/765667.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

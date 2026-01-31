@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BEL FIRE - ACESSO BOMBEIROS</title>
+    
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap" rel="stylesheet">
+    
+    <style>
+        /* Estilo de Alto Contraste para Emergência */
+        :root { --bg-danger: #1a0505; --text-danger: #ff4444; --card-bg: #2d0a0a; }
+        
+        body {
+            background-color: var(--bg-danger);
+            color: white;
+            font-family: 'Inter', sans-serif;
+            margin: 0;
+            padding: 20px;
+        }
+
+        .emergency-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 2px solid var(--text-danger);
+            padding-bottom: 20px;
+            margin-bottom: 20px;
+            animation: flashHeader 2s infinite;
+        }
+
+        @keyframes flashHeader { 0%, 100% { border-color: var(--text-danger); } 50% { border-color: yellow; } }
+
+        .title h1 { margin: 0; font-size: 28px; text-transform: uppercase; letter-spacing: 2px; color: var(--text-danger); }
+        .title span { background: var(--text-danger); color: black; padding: 2px 8px; font-weight: 900; }
+
+        .grid-container {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 20px;
+            height: calc(100vh - 120px);
+        }
+
+        .map-section {
+            background: #000;
+            border: 2px solid #444;
+            border-radius: 8px;
+            position: relative;
+            overflow: hidden;
+            background-image: url('https://upload.wikimedia.org/wikipedia/commons/thumb/e/ec/Planta_baixa_exemplo.svg/1200px-Planta_baixa_exemplo.svg.png'); /* Placeholder de planta */
+            background-size: cover;
+            background-position: center;
+        }
+
+        .fire-marker {
+            position: absolute;
+            top: 40%; left: 50%; /* Exemplo de posição */
+            width: 40px; height: 40px;
+            background: radial-gradient(circle, rgba(255,0,0,1) 0%, rgba(255,0,0,0) 70%);
+            border-radius: 50%;
+            animation: pulseFire 1s infinite;
+        }
+
+        @keyframes pulseFire { 0% { transform: scale(1); opacity: 1; } 100% { transform: scale(3); opacity: 0; } }
+
+        .info-section { display: flex; flex-direction: column; gap: 20px; }
+
+        .data-card {
+            background: var(--card-bg);
+            border: 1px solid var(--text-danger);
+            padding: 15px;
+            border-radius: 8px;
+        }
+
+        .data-card h3 { margin-top: 0; color: #ffaaaa; display: flex; align-items: center; gap: 10px; }
+        
+        .access-route {
+            font-size: 18px;
+            font-weight: bold;
+            color: #4ade80; /* Verde para rota de acesso */
+        }
+
+        .risk-list ul { padding-left: 20px; margin: 0; }
+        .risk-list li { margin-bottom: 5px; color: #fbbf24; }
+
+        .btn-sync {
+            background: #2563eb;
+            color: white;
+            border: none;
+            padding: 15px;
+            font-size: 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            width: 100%;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+
+    <header class="emergency-header">
+        <div class="title">
+            <h1>🚨 BEL FIRE <span>EMERGÊNCIA</span></h1>
+            <p>Protocolo de Integração - Bombeiros (CBM)</p>
+        </div>
+        <div style="text-align: right;">
+            <div style="font-size: 24px; font-weight: bold;" id="timer">00:00:00</div>
+            <div style="color: #4ade80;">CONEXÃO SEGURA ESTABELECIDA</div>
+        </div>
+    </header>
+
+    <div class="grid-container">
+        <div class="map-section">
+            <div class="fire-marker"></div>
+            <svg style="position:absolute; width:100%; height:100%; pointer-events:none;">
+                <path d="M 50 400 Q 150 350 300 300 T 500 250" stroke="#4ade80" stroke-width="5" fill="transparent" stroke-dasharray="10,5"/>
+            </svg>
+            <div style="position:absolute; bottom:10px; left:10px; background:rgba(0,0,0,0.8); padding:10px;">
+                <strong>📍 Foco do Incêndio:</strong> Pilha Norte - Setor B
+            </div>
+        </div>
+
+        <div class="info-section">
+            <div class="data-card">
+                <h3><i class="fas fa-route"></i> Rota de Acesso Prioritária</h3>
+                <div class="access-route">PORTÃO 03 > VIA LATERAL LESTE</div>
+                <p>⚠️ Obs: Portão 03 destravado automaticamente pelo sistema.</p>
+            </div>
+
+            <div class="data-card">
+                <h3><i class="fas fa-biohazard"></i> Riscos Específicos</h3>
+                <div class="risk-list">
+                    <ul>
+                        <li>Material: Bagaço de Cana (Classe A)</li>
+                        <li>Risco de Explosão de Pó: ALTO</li>
+                        <li>Tanque de Diesel a 50m (Norte)</li>
+                        <li>Rede de Alta Tensão: Subterrânea</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="data-card">
+                <h3><i class="fas fa-thermometer-full"></i> Leitura em Tempo Real</h3>
+                <div style="font-size: 40px; font-weight: 900; color: var(--text-danger);">88.5°C</div>
+                <div>Pressão Interna: 1250 hPa (Crítica)</div>
+            </div>
+
+            <button class="btn-sync" onclick="location.reload()"><i class="fas fa-sync"></i> Sincronizar Dados (Cloud Híbrida)</button>
+        </div>
+    </div>
+
+    <script>
+        // Relógio simples
+        setInterval(() => {
+            document.getElementById('timer').innerText = new Date().toLocaleTimeString();
+        }, 1000);
+
+        // Aqui entraria a conexão WebSocket para atualizar a temperatura real
+        // Reutilizando lógica simplificada para demonstração
+        setInterval(() => {
+            const temp = 88 + Math.random();
+            document.querySelector('.data-card div[style*="font-size: 40px"]').innerText = temp.toFixed(1) + '°C';
+        }, 2000);
+    </script>
+</body>
+</html>
