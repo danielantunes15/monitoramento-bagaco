@@ -1,0 +1,14 @@
+{
+  "webhooks": [],
+  "sensorHistory": {},
+  "systemLogs": [
+    {
+      "id": 1769895856842,
+      "timestamp": "2026-01-31T21:44:16.842Z",
+      "action": "DATA_EXPORT",
+      "user": "Usuario_Web",
+      "details": "Exportou relatório CSV"
+    }
+  ],
+  "notifications": []
+}

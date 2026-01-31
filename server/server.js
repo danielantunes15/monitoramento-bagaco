@@ -9,7 +9,8 @@ const cron = require('node-cron');
 const cors = require('cors');
 const axios = require('axios');
 const os = require('os');
-const { exec } = require('child_process'); // Importação para abrir o navegador
+const { exec } = require('child_process');
+const { loadData, saveData } = require('./utils/fileStorage'); // Importa a persistência
 
 // --- Configuração do Servidor ---
 const app = express();
@@ -19,16 +20,16 @@ const wss = new WebSocket.Server({ server });
 app.use(cors());
 app.use(express.json());
 
-// --- Banco de Dados em Memória ---
-const memoryDb = {
-    notifications: [],
-    sensorHistory: {}, 
-    webhooks: [],
-    systemLogs: []     
-};
-
+// --- Carrega Dados Persistidos (Não perde nada ao reiniciar) ---
+console.log('📂 Carregando base de dados local...');
+let memoryDb = loadData();
 const MAX_HISTORY = 1000;
 const START_TIME = Date.now();
+
+// Função auxiliar para salvar (chama o utilitário)
+function persist() {
+    saveData(memoryDb);
+}
 
 // --- Logger de Auditoria ---
 function logSystemAction(action, user, details) {
@@ -41,6 +42,7 @@ function logSystemAction(action, user, details) {
     };
     memoryDb.systemLogs.unshift(log);
     if (memoryDb.systemLogs.length > 500) memoryDb.systemLogs.pop();
+    persist(); // Salva no arquivo
     console.log(`[AUDIT] ${action}: ${details}`);
 }
 
@@ -48,8 +50,23 @@ function logSystemAction(action, user, details) {
 const CONFIG = {
     telegramToken: 'SEU_TELEGRAM_TOKEN_AQUI', 
     telegramChatId: 'SEU_CHAT_ID_AQUI',
-    mqttBroker: 'mqtt://broker.hivemq.com'
+    mqttBroker: 'mqtt://broker.hivemq.com',
+    // Configuração de E-mail (Exemplo com Ethereal para testes, ou Gmail)
+    emailUser: 'monitoramento@belfire.com', 
+    emailPass: 'senha123' 
 };
+
+// Configuração do Transportador de E-mail
+// Para testes reais, recomendamos usar uma Senha de App do Gmail ou Ethereal.email
+const mailTransporter = nodemailer.createTransport({
+    host: "smtp.ethereal.email", // Use 'smtp.gmail.com' para produção
+    port: 587,
+    secure: false, 
+    auth: {
+        user: 'maddison53@ethereal.email', // Troque por credenciais reais
+        pass: 'jn7jnAPss4f63QBp6D'
+    }
+});
 
 let bot = null;
 if (CONFIG.telegramToken !== 'SEU_TELEGRAM_TOKEN_AQUI') {
@@ -67,6 +84,7 @@ async function notify(type, message) {
     };
     memoryDb.notifications.unshift(notification);
     if (memoryDb.notifications.length > 200) memoryDb.notifications.pop();
+    persist();
 
     if (type === 'critical' || type === 'prediction') {
         logSystemAction('ALERT_TRIGGERED', 'Inteligência Artificial', message);
@@ -84,6 +102,43 @@ async function triggerWebhooks(type, payload) {
         }
     });
 }
+
+// --- CRON JOBS: Relatórios Automáticos ---
+// Roda todos os dias às 08:00 da manhã
+cron.schedule('0 8 * * *', async () => {
+    console.log('📧 Iniciando envio de relatório diário...');
+    logSystemAction('EMAIL_REPORT', 'CronJob', 'Gerando relatório automático');
+
+    // 1. Gera o CSV em memória
+    let csvContent = "SensorID,Timestamp,Data,Hora,Temperatura(C)\n";
+    Object.keys(memoryDb.sensorHistory).forEach(id => {
+        memoryDb.sensorHistory[id].forEach(r => {
+            const d = new Date(r.time);
+            csvContent += `${id},${d.toISOString()},${d.toLocaleDateString()},${d.toLocaleTimeString()},${r.val.toFixed(2)}\n`;
+        });
+    });
+
+    // 2. Envia o E-mail
+    try {
+        const info = await mailTransporter.sendMail({
+            from: '"BEL FIRE System" <sistema@belfire.com>',
+            to: "gerente@usina.com", // Defina o destinatário real aqui
+            subject: `📊 Relatório Diário - ${new Date().toLocaleDateString()}`,
+            text: "Segue em anexo o relatório consolidado das últimas 24h das pilhas de bagaço.",
+            attachments: [
+                {
+                    filename: `relatorio_${new Date().toISOString().split('T')[0]}.csv`,
+                    content: csvContent
+                }
+            ]
+        });
+        console.log("Message sent: %s", info.messageId);
+        logSystemAction('EMAIL_SENT', 'System', 'Relatório diário enviado com sucesso');
+    } catch (error) {
+        console.error("Erro ao enviar email:", error);
+        logSystemAction('EMAIL_ERROR', 'System', 'Falha no envio do relatório');
+    }
+});
 
 // --- INTELIGÊNCIA: Análise de Tendência (Delta T) ---
 function analyzeRisk(sensorId, currentTemp) {
@@ -115,7 +170,7 @@ app.get('/api/v1/health', (req, res) => {
         memory_usage: `${memPercentage.toFixed(1)}%`,
         active_connections: wss.clients.size,
         mqtt_status: mqttClient.connected ? 'Conectado' : 'Desconectado',
-        database_type: 'In-Memory (High Performance)'
+        database_type: 'JSON Persistence (Local)'
     });
 });
 
@@ -139,13 +194,16 @@ app.get('/api/v1/export/csv', (req, res) => {
 });
 
 app.get('/api/v1/logs', (req, res) => res.json(memoryDb.systemLogs));
+
 app.get('/api/v1/webhooks', (req, res) => res.json(memoryDb.webhooks));
 app.post('/api/v1/webhooks', (req, res) => {
     memoryDb.webhooks.push({ id: Date.now(), ...req.body });
+    persist(); // Salva
     res.json({ success: true });
 });
 app.delete('/api/v1/webhooks/:id', (req, res) => {
     memoryDb.webhooks = memoryDb.webhooks.filter(w => w.id !== parseInt(req.params.id));
+    persist(); // Salva
     res.json({ success: true });
 });
 
@@ -169,6 +227,9 @@ mqttClient.on('message', (topic, message) => {
         if (!memoryDb.sensorHistory[sensorId]) memoryDb.sensorHistory[sensorId] = [];
         memoryDb.sensorHistory[sensorId].push({ time: Date.now(), val: data.temp });
         if (memoryDb.sensorHistory[sensorId].length > MAX_HISTORY) memoryDb.sensorHistory[sensorId].shift();
+        
+        // Salva periodicamente o histórico (a cada 10 leituras para não pesar o disco)
+        if (memoryDb.sensorHistory[sensorId].length % 10 === 0) persist();
 
         analyzeRisk(sensorId, data.temp);
 
@@ -183,19 +244,15 @@ mqttClient.on('message', (topic, message) => {
 app.use(express.static(path.join(__dirname, '../public')));
 app.get('*', (req, res) => { if (!req.path.startsWith('/api')) res.sendFile(path.join(__dirname, '../public/index.html')); });
 
-// --- INICIALIZAÇÃO DO SERVIDOR COM ABERTURA AUTOMÁTICA ---
+// --- INICIALIZAÇÃO DO SERVIDOR ---
 server.listen(3000, () => {
     console.log('🔥 BEL FIRE Enterprise rodando na porta 3000');
+    console.log('💾 Sistema de Persistência: ATIVO');
     console.log('🌍 Abrindo navegador automaticamente...');
 
     const url = 'http://localhost:3000';
-    // Comando para abrir navegador baseado no Sistema Operacional
     const start = (process.platform == 'darwin' ? 'open' : process.platform == 'win32' ? 'start' : 'xdg-open');
-    
     exec(start + ' ' + url, (err) => {
-        if(err) {
-            // Em alguns Linux (WSL) ou ambientes headless, isso pode falhar, mas o server continua rodando
-            console.log('⚠️  Não foi possível abrir o navegador automaticamente. Acesse manualmente: ' + url);
-        }
+        if(err) console.log('⚠️  Acesse manualmente: ' + url);
     });
 });
