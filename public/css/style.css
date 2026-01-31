@@ -1,0 +1,747 @@
+/* Reset e configurações globais */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+:root {
+    /* Cores principais */
+    --primary-color: #2c3e50;
+    --secondary-color: #3498db;
+    --accent-color: #e74c3c;
+    --warning-color: #f39c12;
+    --success-color: #27ae60;
+    --info-color: #2980b9;
+    
+    /* Cores de temperatura */
+    --temp-low: #2ecc71;
+    --temp-normal: #f1c40f;
+    --temp-high: #e74c3c;
+    --temp-critical: #c0392b;
+    
+    /* Cores de fundo */
+    --bg-primary: #f8f9fa;
+    --bg-secondary: #ffffff;
+    --bg-card: #ffffff;
+    --bg-dark: #1a252f;
+    
+    /* Cores de texto */
+    --text-primary: #2c3e50;
+    --text-secondary: #7f8c8d;
+    --text-light: #ecf0f1;
+    
+    /* Sombras */
+    --shadow-light: 0 4px 6px rgba(0, 0, 0, 0.05);
+    --shadow-medium: 0 6px 15px rgba(0, 0, 0, 0.08);
+    --shadow-heavy: 0 10px 30px rgba(0, 0, 0, 0.12);
+    
+    /* Bordas */
+    --border-radius: 12px;
+    --border-color: #e0e6ed;
+    
+    /* Transições */
+    --transition-fast: 0.2s ease;
+    --transition-normal: 0.3s ease;
+}
+
+body {
+    font-family: 'Inter', sans-serif;
+    background-color: var(--bg-primary);
+    color: var(--text-primary);
+    line-height: 1.6;
+    min-height: 100vh;
+}
+
+.container {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+/* Header */
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px 0;
+    margin-bottom: 30px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.logo-container {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.logo-icon {
+    background: linear-gradient(135deg, var(--accent-color), var(--warning-color));
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 28px;
+    box-shadow: var(--shadow-medium);
+}
+
+.logo-text h1 {
+    font-size: 28px;
+    font-weight: 700;
+    color: var(--primary-color);
+}
+
+.subtitle {
+    color: var(--text-secondary);
+    font-size: 14px;
+    margin-top: 4px;
+}
+
+.status-container {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 10px;
+}
+
+.status-indicator {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 16px;
+    background-color: var(--bg-secondary);
+    border-radius: 50px;
+    box-shadow: var(--shadow-light);
+    font-size: 14px;
+    font-weight: 500;
+}
+
+.status-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background-color: var(--success-color);
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0% { opacity: 1; }
+    50% { opacity: 0.5; }
+    100% { opacity: 1; }
+}
+
+.status-indicator.active .status-dot {
+    background-color: var(--success-color);
+}
+
+.status-indicator.inactive .status-dot {
+    background-color: var(--text-secondary);
+}
+
+.current-time {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--primary-color);
+    background-color: var(--bg-secondary);
+    padding: 6px 15px;
+    border-radius: 6px;
+    box-shadow: var(--shadow-light);
+}
+
+/* Painel de Alertas */
+.alert-panel {
+    background-color: var(--bg-secondary);
+    border-radius: var(--border-radius);
+    padding: 25px;
+    margin-bottom: 30px;
+    box-shadow: var(--shadow-medium);
+}
+
+.panel-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.panel-header h2 {
+    font-size: 20px;
+    font-weight: 600;
+    color: var(--primary-color);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.panel-header h2 i {
+    color: var(--secondary-color);
+}
+
+.btn-refresh {
+    background-color: var(--secondary-color);
+    color: white;
+    border: none;
+    padding: 10px 18px;
+    border-radius: 8px;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    transition: var(--transition-normal);
+}
+
+.btn-refresh:hover {
+    background-color: #2980b9;
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-medium);
+}
+
+.alert-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 20px;
+}
+
+.alert-card {
+    padding: 20px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    transition: var(--transition-normal);
+    box-shadow: var(--shadow-light);
+}
+
+.alert-card:hover {
+    transform: translateY(-5px);
+    box-shadow: var(--shadow-heavy);
+}
+
+.alert-card.critical {
+    background-color: rgba(231, 76, 60, 0.1);
+    border-left: 5px solid var(--accent-color);
+}
+
+.alert-card.warning {
+    background-color: rgba(243, 156, 18, 0.1);
+    border-left: 5px solid var(--warning-color);
+}
+
+.alert-card.info {
+    background-color: rgba(41, 128, 185, 0.1);
+    border-left: 5px solid var(--info-color);
+}
+
+.alert-icon {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+}
+
+.alert-card.critical .alert-icon {
+    background-color: var(--accent-color);
+    color: white;
+}
+
+.alert-card.warning .alert-icon {
+    background-color: var(--warning-color);
+    color: white;
+}
+
+.alert-card.info .alert-icon {
+    background-color: var(--info-color);
+    color: white;
+}
+
+.alert-content h3 {
+    font-size: 18px;
+    margin-bottom: 5px;
+    font-weight: 600;
+}
+
+.alert-content p {
+    color: var(--text-secondary);
+    font-size: 14px;
+}
+
+/* Painel de Temperatura */
+.temperature-panel {
+    background-color: var(--bg-secondary);
+    border-radius: var(--border-radius);
+    padding: 25px;
+    margin-bottom: 30px;
+    box-shadow: var(--shadow-medium);
+}
+
+.temperature-range {
+    background-color: rgba(52, 152, 219, 0.1);
+    padding: 8px 15px;
+    border-radius: 8px;
+    font-size: 14px;
+    color: var(--secondary-color);
+    font-weight: 500;
+}
+
+.range-label {
+    color: var(--text-secondary);
+}
+
+.temperature-display {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 30px;
+    margin-bottom: 30px;
+}
+
+@media (max-width: 1024px) {
+    .temperature-display {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* Medidor de Temperatura */
+.gauge-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+.gauge-wrapper {
+    position: relative;
+    width: 280px;
+    height: 280px;
+    margin-bottom: 20px;
+}
+
+.gauge {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    background: conic-gradient(
+        var(--temp-low) 0% 25%,
+        var(--temp-normal) 25% 65%,
+        var(--temp-high) 65% 85%,
+        var(--temp-critical) 85% 100%
+    );
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.gauge::before {
+    content: '';
+    position: absolute;
+    width: 90%;
+    height: 90%;
+    background-color: var(--bg-secondary);
+    border-radius: 50%;
+    z-index: 1;
+}
+
+.gauge-fill {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    clip-path: polygon(50% 50%, 50% 0%, 100% 0%, 100% 100%, 0% 100%, 0% 0%, 50% 0%);
+    transform: rotate(0deg);
+    transition: transform 1s ease;
+    z-index: 2;
+}
+
+.gauge-center {
+    position: absolute;
+    width: 160px;
+    height: 160px;
+    background-color: var(--bg-secondary);
+    border-radius: 50%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    z-index: 3;
+    box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.1);
+}
+
+.gauge-value {
+    font-size: 48px;
+    font-weight: 700;
+    color: var(--primary-color);
+    line-height: 1;
+}
+
+.gauge-unit {
+    font-size: 20px;
+    color: var(--text-secondary);
+    margin-top: 5px;
+}
+
+.gauge-labels {
+    display: flex;
+    justify-content: space-between;
+    width: 100%;
+    margin-top: 15px;
+    font-size: 14px;
+    color: var(--text-secondary);
+}
+
+.gauge-status {
+    font-size: 18px;
+    font-weight: 600;
+    padding: 10px 20px;
+    border-radius: 50px;
+    background-color: var(--temp-low);
+    color: white;
+    transition: var(--transition-normal);
+}
+
+/* Estatísticas de Temperatura */
+.temperature-stats {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 20px;
+}
+
+@media (max-width: 768px) {
+    .temperature-stats {
+        grid-template-columns: 1fr;
+    }
+}
+
+.stat-card {
+    background-color: var(--bg-primary);
+    border-radius: 12px;
+    padding: 20px;
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    box-shadow: var(--shadow-light);
+    transition: var(--transition-normal);
+}
+
+.stat-card:hover {
+    transform: translateY(-5px);
+    box-shadow: var(--shadow-medium);
+}
+
+.stat-icon {
+    width: 50px;
+    height: 50px;
+    border-radius: 10px;
+    background-color: var(--secondary-color);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 20px;
+}
+
+.stat-content h4 {
+    font-size: 14px;
+    color: var(--text-secondary);
+    margin-bottom: 5px;
+    font-weight: 500;
+}
+
+.stat-value {
+    font-size: 24px;
+    font-weight: 700;
+    color: var(--primary-color);
+    line-height: 1;
+}
+
+.stat-time, .stat-subtitle {
+    font-size: 12px;
+    color: var(--text-secondary);
+    margin-top: 5px;
+}
+
+/* Histórico de Temperatura */
+.temperature-history {
+    background-color: var(--bg-primary);
+    border-radius: var(--border-radius);
+    padding: 25px;
+    box-shadow: var(--shadow-light);
+}
+
+.history-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.history-header h3 {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--primary-color);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.history-header h3 i {
+    color: var(--success-color);
+}
+
+.history-controls {
+    display: flex;
+    gap: 10px;
+}
+
+.btn-time {
+    padding: 8px 16px;
+    border: 1px solid var(--border-color);
+    background-color: white;
+    border-radius: 6px;
+    font-size: 14px;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: var(--transition-fast);
+}
+
+.btn-time:hover, .btn-time.active {
+    background-color: var(--secondary-color);
+    color: white;
+    border-color: var(--secondary-color);
+}
+
+.chart-container {
+    height: 250px;
+    width: 100%;
+}
+
+/* Painel de Sensores */
+.sensors-panel {
+    background-color: var(--bg-secondary);
+    border-radius: var(--border-radius);
+    padding: 25px;
+    margin-bottom: 30px;
+    box-shadow: var(--shadow-medium);
+}
+
+.sensor-count {
+    background-color: rgba(52, 152, 219, 0.1);
+    padding: 8px 15px;
+    border-radius: 8px;
+    font-size: 14px;
+    color: var(--secondary-color);
+    font-weight: 500;
+}
+
+.sensors-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 20px;
+    margin-top: 20px;
+}
+
+.sensor-card {
+    background-color: var(--bg-primary);
+    border-radius: 12px;
+    padding: 20px;
+    box-shadow: var(--shadow-light);
+    transition: var(--transition-normal);
+    border: 1px solid var(--border-color);
+}
+
+.sensor-card:hover {
+    transform: translateY(-5px);
+    box-shadow: var(--shadow-medium);
+}
+
+.sensor-card.critical {
+    border-color: var(--accent-color);
+    background-color: rgba(231, 76, 60, 0.05);
+}
+
+.sensor-card.warning {
+    border-color: var(--warning-color);
+    background-color: rgba(243, 156, 18, 0.05);
+}
+
+.sensor-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.sensor-id {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-weight: 600;
+    color: var(--primary-color);
+}
+
+.sensor-id i {
+    color: var(--secondary-color);
+    font-size: 18px;
+}
+
+.sensor-status {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 14px;
+    padding: 5px 10px;
+    border-radius: 50px;
+    background-color: rgba(39, 174, 96, 0.1);
+    color: var(--success-color);
+}
+
+.sensor-temperature {
+    text-align: center;
+    margin-bottom: 15px;
+}
+
+.temp-value {
+    font-size: 36px;
+    font-weight: 700;
+    color: var(--primary-color);
+    line-height: 1;
+}
+
+.temp-label {
+    font-size: 14px;
+    color: var(--text-secondary);
+    margin-top: 5px;
+}
+
+.sensor-location {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+    color: var(--text-secondary);
+    padding-top: 15px;
+    border-top: 1px solid var(--border-color);
+}
+
+.sensor-location i {
+    color: var(--accent-color);
+}
+
+/* Footer */
+.footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px 0;
+    border-top: 1px solid var(--border-color);
+    margin-top: 20px;
+    flex-wrap: wrap;
+    gap: 20px;
+}
+
+.footer-info p {
+    color: var(--text-secondary);
+    font-size: 14px;
+}
+
+.footer-update {
+    margin-top: 5px;
+    font-size: 13px;
+}
+
+.footer-actions {
+    display: flex;
+    gap: 15px;
+}
+
+.btn-action {
+    padding: 12px 20px;
+    border-radius: 8px;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    transition: var(--transition-normal);
+    border: none;
+    font-size: 14px;
+}
+
+.btn-action:not(.secondary) {
+    background-color: var(--primary-color);
+    color: white;
+}
+
+.btn-action.secondary {
+    background-color: white;
+    color: var(--primary-color);
+    border: 1px solid var(--border-color);
+}
+
+.btn-action:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-medium);
+}
+
+.btn-action:not(.secondary):hover {
+    background-color: #1a252f;
+}
+
+.btn-action.secondary:hover {
+    background-color: var(--bg-primary);
+}
+
+/* Responsividade */
+@media (max-width: 768px) {
+    .header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 20px;
+    }
+    
+    .status-container {
+        align-items: flex-start;
+    }
+    
+    .panel-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 15px;
+    }
+    
+    .temperature-range {
+        align-self: flex-start;
+    }
+    
+    .history-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 15px;
+    }
+    
+    .footer {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    
+    .footer-actions {
+        width: 100%;
+        justify-content: flex-start;
+    }
+}
+
+/* Animações */
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.alert-card, .stat-card, .sensor-card {
+    animation: fadeIn 0.5s ease forwards;
+}

@@ -1,0 +1,2081 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BEL FIRE - Monitoramento por Câmeras</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/dark-mode.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        /* Estilos específicos para a página de câmeras */
+        :root {
+            /* Cores específicas para câmeras */
+            --camera-active: #10b981;
+            --camera-inactive: #6b7280;
+            --camera-recording: #ef4444;
+            --camera-alert: #f59e0b;
+            --camera-critical: #dc2626;
+        }
+        
+        body.dark-mode {
+            background-color: #0f172a;
+            color: #f8fafc;
+            font-family: 'Inter', sans-serif;
+            margin: 0;
+            padding: 0;
+            min-height: 100vh;
+        }
+        
+        /* Sidebar */
+        .sidebar {
+            position: fixed;
+            left: 0;
+            top: 0;
+            width: 260px;
+            height: 100vh;
+            background-color: #1e293b;
+            border-right: 1px solid #334155;
+            padding: 25px 20px;
+            display: flex;
+            flex-direction: column;
+            z-index: 1000;
+            box-shadow: 0 6px 15px rgba(0, 0, 0, 0.4);
+        }
+        
+        .logo-container {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 40px;
+        }
+        
+        .logo-icon {
+            background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+            width: 50px;
+            height: 50px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            color: white;
+        }
+        
+        .logo-text h1 {
+            font-size: 22px;
+            font-weight: 700;
+            margin: 0;
+            color: #f8fafc;
+        }
+        
+        .subtitle {
+            font-size: 12px;
+            color: #94a3b8;
+            margin-top: 4px;
+        }
+        
+        .menu-items {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            flex: 1;
+        }
+        
+        .menu-item {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            padding: 14px 18px;
+            color: #cbd5e1;
+            text-decoration: none;
+            border-radius: 10px;
+            transition: all 0.3s ease;
+            font-weight: 500;
+        }
+        
+        .menu-item i {
+            width: 20px;
+            text-align: center;
+            font-size: 18px;
+        }
+        
+        .menu-item:hover {
+            background-color: #334155;
+            color: #f8fafc;
+            transform: translateX(5px);
+        }
+        
+        .menu-item.active {
+            background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+            color: white;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+        }
+        
+        .system-status {
+            margin-top: auto;
+            padding-top: 20px;
+            border-top: 1px solid #334155;
+        }
+        
+        .status-indicator {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 15px;
+            background-color: #1e293b;
+            border-radius: 8px;
+            margin-bottom: 15px;
+        }
+        
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background-color: #10b981;
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        
+        .current-time {
+            text-align: center;
+            font-size: 14px;
+            color: #94a3b8;
+            font-weight: 600;
+            padding: 8px;
+            background-color: #1e293b;
+            border-radius: 6px;
+        }
+        
+        /* Conteúdo Principal */
+        .main-content {
+            margin-left: 260px;
+            padding: 25px;
+            min-height: 100vh;
+        }
+        
+        .top-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 25px;
+            flex-wrap: wrap;
+            gap: 20px;
+        }
+        
+        .header-title h2 {
+            font-size: 24px;
+            font-weight: 700;
+            margin: 0 0 8px 0;
+            color: #f8fafc;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .header-title h2 i {
+            color: #3b82f6;
+        }
+        
+        .page-description {
+            color: #94a3b8;
+            font-size: 14px;
+            margin: 0;
+        }
+        
+        .header-controls {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+        
+        .btn-control {
+            background-color: #1e293b;
+            color: #f8fafc;
+            border: 1px solid #334155;
+            padding: 10px 18px;
+            border-radius: 8px;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 14px;
+        }
+        
+        .btn-control:hover {
+            background-color: #334155;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+        }
+        
+        .btn-control.secondary {
+            background-color: transparent;
+            border-color: #3b82f6;
+            color: #3b82f6;
+        }
+        
+        /* Banner de Alertas */
+        .alert-banner {
+            background: linear-gradient(90deg, #f59e0b, #d97706);
+            color: #1f2937;
+            padding: 15px 20px;
+            border-radius: 10px;
+            margin-bottom: 25px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            animation: slideIn 0.5s ease;
+        }
+        
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .alert-content {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-weight: 500;
+        }
+        
+        .btn-alert-close {
+            background: none;
+            border: none;
+            color: #1f2937;
+            font-size: 18px;
+            cursor: pointer;
+            padding: 5px;
+            border-radius: 4px;
+            transition: all 0.2s ease;
+        }
+        
+        .btn-alert-close:hover {
+            background-color: rgba(0, 0, 0, 0.1);
+        }
+        
+        /* Grade de Câmeras */
+        .cameras-container {
+            margin-bottom: 30px;
+        }
+        
+        .camera-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 20px;
+            transition: all 0.3s ease;
+        }
+        
+        @media (max-width: 1400px) {
+            .camera-grid {
+                grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            }
+        }
+        
+        @media (max-width: 768px) {
+            .camera-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+        
+        .camera-card {
+            background-color: #1e293b;
+            border-radius: 12px;
+            overflow: hidden;
+            border: 1px solid #334155;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+        }
+        
+        .camera-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            border-color: #3b82f6;
+        }
+        
+        .camera-card.alert {
+            border-color: #f59e0b;
+            box-shadow: 0 0 15px rgba(245, 158, 11, 0.3);
+        }
+        
+        .camera-card.critical {
+            border-color: #ef4444;
+            box-shadow: 0 0 20px rgba(239, 68, 68, 0.4);
+            animation: criticalPulse 2s infinite;
+        }
+        
+        @keyframes criticalPulse {
+            0%, 100% { box-shadow: 0 0 20px rgba(239, 68, 68, 0.4); }
+            50% { box-shadow: 0 0 30px rgba(239, 68, 68, 0.6); }
+        }
+        
+        .camera-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px 20px;
+            background-color: #1e293b;
+            border-bottom: 1px solid #334155;
+        }
+        
+        .camera-title {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-weight: 600;
+            color: #f8fafc;
+        }
+        
+        .camera-title i {
+            color: #3b82f6;
+        }
+        
+        .camera-status {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 12px;
+            font-weight: 600;
+            padding: 4px 10px;
+            border-radius: 20px;
+            background-color: rgba(16, 185, 129, 0.2);
+            color: #10b981;
+        }
+        
+        .camera-status.inactive {
+            background-color: rgba(148, 163, 184, 0.2);
+            color: #94a3b8;
+        }
+        
+        .camera-status.recording {
+            background-color: rgba(239, 68, 68, 0.2);
+            color: #ef4444;
+        }
+        
+        .camera-view {
+            position: relative;
+            height: 250px;
+            overflow: hidden;
+        }
+        
+        .video-placeholder {
+            width: 100%;
+            height: 100%;
+            background-color: #000;
+            position: relative;
+        }
+        
+        .simulated-video {
+            width: 100%;
+            height: 100%;
+            position: relative;
+        }
+        
+        .video-overlay {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            right: 10px;
+            display: flex;
+            justify-content: space-between;
+            z-index: 2;
+        }
+        
+        .video-time, .video-temp {
+            background-color: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 5px 10px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        
+        .video-simulation {
+            width: 100%;
+            height: 100%;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .simulation-content {
+            width: 100%;
+            height: 100%;
+            position: relative;
+        }
+        
+        .bagaco-pile {
+            position: absolute;
+            bottom: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 80%;
+            height: 60%;
+            background: linear-gradient(to top, #4b5563, #6b7280);
+            border-radius: 10px 10px 0 0;
+            box-shadow: inset 0 -10px 20px rgba(0, 0, 0, 0.5);
+        }
+        
+        .temperature-glow {
+            position: absolute;
+            bottom: 30%;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 60%;
+            height: 40%;
+            background: radial-gradient(circle, rgba(239, 68, 68, 0.4) 0%, rgba(239, 68, 68, 0) 70%);
+            border-radius: 50%;
+            animation: glowPulse 3s infinite;
+        }
+        
+        @keyframes glowPulse {
+            0%, 100% { opacity: 0.8; }
+            50% { opacity: 0.4; }
+        }
+        
+        .temperature-glow.medium {
+            background: radial-gradient(circle, rgba(245, 158, 11, 0.4) 0%, rgba(245, 158, 11, 0) 70%);
+        }
+        
+        .temperature-glow.low {
+            background: radial-gradient(circle, rgba(16, 185, 129, 0.4) 0%, rgba(16, 185, 129, 0) 70%);
+        }
+        
+        .temperature-glow.high {
+            background: radial-gradient(circle, rgba(249, 115, 22, 0.6) 0%, rgba(249, 115, 22, 0) 70%);
+            animation: glowPulse 2s infinite;
+        }
+        
+        .camera-controls {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            padding: 15px;
+            background-color: #1e293b;
+            border-top: 1px solid #334155;
+        }
+        
+        .cam-control {
+            background-color: #334155;
+            color: #f8fafc;
+            border: none;
+            width: 40px;
+            height: 40px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-size: 16px;
+        }
+        
+        .cam-control:hover {
+            background-color: #3b82f6;
+            transform: scale(1.1);
+        }
+        
+        .cam-control.active {
+            background-color: #ef4444;
+            color: white;
+        }
+        
+        .camera-info {
+            display: flex;
+            justify-content: space-between;
+            padding: 12px 20px;
+            font-size: 12px;
+            color: #94a3b8;
+            background-color: #1e293b;
+            border-top: 1px solid #334155;
+        }
+        
+        .camera-info span {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        
+        /* Painel de Controle */
+        .control-panel {
+            background-color: #1e293b;
+            border-radius: 12px;
+            padding: 25px;
+            margin-top: 30px;
+            border: 1px solid #334155;
+        }
+        
+        .panel-section {
+            margin-bottom: 30px;
+        }
+        
+        .panel-section:last-child {
+            margin-bottom: 0;
+        }
+        
+        .panel-section h3 {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 20px;
+            color: #f8fafc;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .control-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+        }
+        
+        .control-btn {
+            background-color: #1e293b;
+            color: #f8fafc;
+            border: 1px solid #334155;
+            padding: 15px;
+            border-radius: 10px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .control-btn:hover {
+            background-color: #334155;
+            transform: translateY(-3px);
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+        }
+        
+        .control-btn.active {
+            background-color: #3b82f6;
+            border-color: #3b82f6;
+        }
+        
+        .control-btn.danger {
+            background-color: #ef4444;
+            border-color: #ef4444;
+        }
+        
+        .control-btn.warning {
+            background-color: #f59e0b;
+            border-color: #f59e0b;
+            color: #1f2937;
+        }
+        
+        .control-btn i {
+            font-size: 24px;
+        }
+        
+        .control-btn span {
+            font-size: 14px;
+            font-weight: 500;
+        }
+        
+        .status-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+        }
+        
+        .status-item {
+            background-color: #1e293b;
+            padding: 20px;
+            border-radius: 10px;
+            border: 1px solid #334155;
+        }
+        
+        .status-label {
+            font-size: 14px;
+            color: #94a3b8;
+            margin-bottom: 8px;
+        }
+        
+        .status-value {
+            font-size: 24px;
+            font-weight: 700;
+            color: #f8fafc;
+        }
+        
+        /* Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.8);
+            z-index: 2000;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .modal.active {
+            display: flex;
+        }
+        
+        .modal-content {
+            background-color: #1e293b;
+            width: 90%;
+            max-width: 500px;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            animation: modalSlideIn 0.3s ease;
+        }
+        
+        @keyframes modalSlideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-50px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px;
+            background-color: #1e293b;
+            border-bottom: 1px solid #334155;
+        }
+        
+        .modal-header h3 {
+            margin: 0;
+            color: #f8fafc;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .modal-close {
+            background: none;
+            border: none;
+            color: #94a3b8;
+            font-size: 24px;
+            cursor: pointer;
+            padding: 0;
+            width: 30px;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 4px;
+            transition: all 0.2s ease;
+        }
+        
+        .modal-close:hover {
+            background-color: #334155;
+            color: #f8fafc;
+        }
+        
+        .modal-body {
+            padding: 20px;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: #cbd5e1;
+            font-weight: 500;
+        }
+        
+        .form-group input,
+        .form-group select {
+            width: 100%;
+            padding: 12px 15px;
+            background-color: #1e293b;
+            border: 1px solid #334155;
+            border-radius: 8px;
+            color: #f8fafc;
+            font-size: 14px;
+            transition: all 0.3s ease;
+        }
+        
+        .form-group input:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+        }
+        
+        .modal-footer {
+            padding: 20px;
+            background-color: #1e293b;
+            border-top: 1px solid #334155;
+            display: flex;
+            justify-content: flex-end;
+            gap: 15px;
+        }
+        
+        .btn-primary, .btn-secondary {
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: none;
+            font-size: 14px;
+        }
+        
+        .btn-primary {
+            background-color: #3b82f6;
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background-color: #2563eb;
+            transform: translateY(-2px);
+        }
+        
+        .btn-secondary {
+            background-color: #334155;
+            color: #f8fafc;
+        }
+        
+        .btn-secondary:hover {
+            background-color: #475569;
+        }
+        
+        /* Responsividade */
+        @media (max-width: 1024px) {
+            .sidebar {
+                width: 220px;
+            }
+            
+            .main-content {
+                margin-left: 220px;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            .sidebar {
+                width: 70px;
+                padding: 20px 10px;
+            }
+            
+            .logo-text, .subtitle, .menu-item span, .system-status span {
+                display: none;
+            }
+            
+            .menu-item {
+                justify-content: center;
+                padding: 15px;
+            }
+            
+            .menu-item i {
+                font-size: 20px;
+            }
+            
+            .main-content {
+                margin-left: 70px;
+            }
+            
+            .top-header {
+                flex-direction: column;
+            }
+            
+            .header-controls {
+                width: 100%;
+                justify-content: center;
+            }
+            
+            .camera-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+        
+        /* Animações */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .camera-card {
+            animation: fadeIn 0.5s ease forwards;
+        }
+        
+        /* Indicador de gravação */
+        .recording-indicator {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            background-color: rgba(239, 68, 68, 0.8);
+            color: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 10px;
+            font-weight: 600;
+            z-index: 3;
+        }
+        
+        .recording-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background-color: white;
+            animation: recordingBlink 1s infinite;
+        }
+        
+        @keyframes recordingBlink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+        }
+        
+        /* Indicador de temperatura no vídeo */
+        .temp-indicator {
+            position: absolute;
+            bottom: 10px;
+            left: 10px;
+            background-color: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 600;
+            z-index: 3;
+        }
+    </style>
+</head>
+<body class="dark-mode">
+    <!-- Sidebar Menu -->
+    <nav class="sidebar">
+        <div class="logo-container">
+            <div class="logo-icon">
+                <i class="fas fa-fire-extinguisher"></i>
+            </div>
+            <div class="logo-text">
+                <h1>BEL FIRE</h1>
+                <p class="subtitle">Sistema de Monitoramento</p>
+            </div>
+        </div>
+        
+        <div class="menu-items">
+            <a href="index.html" class="menu-item active">
+                <i class="fas fa-video"></i>
+                <span>Câmeras</span>
+            </a>
+            <a href="dashboard.html" class="menu-item">
+                <i class="fas fa-thermometer-half"></i>
+                <span>Sensores</span>
+            </a>
+            <a href="cameras.html" class="menu-item">
+                <i class="fas fa-expand"></i>
+                <span>Tela Cheia</span>
+            </a>
+            <a href="#" class="menu-item" id="add-camera-btn">
+                <i class="fas fa-plus-circle"></i>
+                <span>Adicionar Câmera</span>
+            </a>
+        </div>
+        
+        <div class="system-status">
+            <div class="status-indicator active">
+                <div class="status-dot"></div>
+                <span>Sistema Online</span>
+            </div>
+            <div class="current-time" id="current-time">--:--:--</div>
+        </div>
+    </nav>
+
+    <!-- Conteúdo Principal -->
+    <main class="main-content">
+        <!-- Cabeçalho -->
+        <header class="top-header">
+            <div class="header-title">
+                <h2><i class="fas fa-video"></i> Monitoramento por Câmeras</h2>
+                <p class="page-description">Visualização em tempo real de 6 pontos críticos da pilha de bagaço</p>
+            </div>
+            
+            <div class="header-controls">
+                <button class="btn-control" id="grid-toggle">
+                    <i class="fas fa-th"></i> Alterar Grid
+                </button>
+                <button class="btn-control" id="record-toggle">
+                    <i class="fas fa-record-vinyl"></i> Gravar
+                </button>
+                <button class="btn-control" id="fullscreen-btn">
+                    <i class="fas fa-expand"></i> Tela Cheia
+                </button>
+                <button class="btn-control secondary" id="alert-history">
+                    <i class="fas fa-history"></i> Histórico
+                </button>
+            </div>
+        </header>
+
+        <!-- Painel de Alertas -->
+        <div class="alert-banner" id="alert-banner">
+            <div class="alert-content">
+                <i class="fas fa-exclamation-triangle"></i>
+                <span id="alert-message">Monitoramento ativo - Nenhum alerta no momento</span>
+            </div>
+            <button class="btn-alert-close" id="close-alert">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+
+        <!-- Grade de Câmeras -->
+        <div class="cameras-container" id="cameras-container">
+            <div class="camera-grid" id="camera-grid">
+                <!-- Câmera 1 -->
+                <div class="camera-card" data-camera="1">
+                    <div class="camera-header">
+                        <div class="camera-title">
+                            <i class="fas fa-video"></i>
+                            <span>Câmera 01 - Pilha Norte</span>
+                        </div>
+                        <div class="camera-status active">
+                            <div class="status-dot"></div>
+                            <span>LIVE</span>
+                        </div>
+                    </div>
+                    <div class="camera-view">
+                        <div class="video-placeholder" id="camera-1">
+                            <div class="recording-indicator" style="display: none;">
+                                <div class="recording-dot"></div>
+                                <span>REC</span>
+                            </div>
+                            <div class="simulated-video">
+                                <div class="video-overlay">
+                                    <div class="video-time">15:42:23</div>
+                                    <div class="video-temp">64°C</div>
+                                </div>
+                                <div class="video-simulation">
+                                    <div class="simulation-content">
+                                        <div class="bagaco-pile"></div>
+                                        <div class="temperature-glow high"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="camera-controls">
+                        <button class="cam-control" data-camera="1" data-action="zoom-in">
+                            <i class="fas fa-search-plus"></i>
+                        </button>
+                        <button class="cam-control" data-camera="1" data-action="record">
+                            <i class="fas fa-record-vinyl"></i>
+                        </button>
+                        <button class="cam-control" data-camera="1" data-action="settings">
+                            <i class="fas fa-cog"></i>
+                        </button>
+                        <button class="cam-control" data-camera="1" data-action="fullscreen">
+                            <i class="fas fa-expand"></i>
+                        </button>
+                    </div>
+                    <div class="camera-info">
+                        <span><i class="fas fa-map-marker-alt"></i> Setor A - Superior</span>
+                        <span><i class="fas fa-thermometer"></i> 64°C</span>
+                    </div>
+                </div>
+
+                <!-- Câmera 2 -->
+                <div class="camera-card" data-camera="2">
+                    <div class="camera-header">
+                        <div class="camera-title">
+                            <i class="fas fa-video"></i>
+                            <span>Câmera 02 - Pilha Norte</span>
+                        </div>
+                        <div class="camera-status active">
+                            <div class="status-dot"></div>
+                            <span>LIVE</span>
+                        </div>
+                    </div>
+                    <div class="camera-view">
+                        <div class="video-placeholder" id="camera-2">
+                            <div class="recording-indicator" style="display: none;">
+                                <div class="recording-dot"></div>
+                                <span>REC</span>
+                            </div>
+                            <div class="simulated-video">
+                                <div class="video-overlay">
+                                    <div class="video-time">15:42:25</div>
+                                    <div class="video-temp">58°C</div>
+                                </div>
+                                <div class="video-simulation">
+                                    <div class="simulation-content">
+                                        <div class="bagaco-pile"></div>
+                                        <div class="temperature-glow medium"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="camera-controls">
+                        <button class="cam-control" data-camera="2" data-action="zoom-in">
+                            <i class="fas fa-search-plus"></i>
+                        </button>
+                        <button class="cam-control" data-camera="2" data-action="record">
+                            <i class="fas fa-record-vinyl"></i>
+                        </button>
+                        <button class="cam-control" data-camera="2" data-action="settings">
+                            <i class="fas fa-cog"></i>
+                        </button>
+                        <button class="cam-control" data-camera="2" data-action="fullscreen">
+                            <i class="fas fa-expand"></i>
+                        </button>
+                    </div>
+                    <div class="camera-info">
+                        <span><i class="fas fa-map-marker-alt"></i> Setor A - Central</span>
+                        <span><i class="fas fa-thermometer"></i> 58°C</span>
+                    </div>
+                </div>
+
+                <!-- Câmera 3 -->
+                <div class="camera-card" data-camera="3">
+                    <div class="camera-header">
+                        <div class="camera-title">
+                            <i class="fas fa-video"></i>
+                            <span>Câmera 03 - Pilha Norte</span>
+                        </div>
+                        <div class="camera-status active">
+                            <div class="status-dot"></div>
+                            <span>LIVE</span>
+                        </div>
+                    </div>
+                    <div class="camera-view">
+                        <div class="video-placeholder" id="camera-3">
+                            <div class="recording-indicator" style="display: none;">
+                                <div class="recording-dot"></div>
+                                <span>REC</span>
+                            </div>
+                            <div class="simulated-video">
+                                <div class="video-overlay">
+                                    <div class="video-time">15:42:27</div>
+                                    <div class="video-temp">52°C</div>
+                                </div>
+                                <div class="video-simulation">
+                                    <div class="simulation-content">
+                                        <div class="bagaco-pile"></div>
+                                        <div class="temperature-glow low"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="camera-controls">
+                        <button class="cam-control" data-camera="3" data-action="zoom-in">
+                            <i class="fas fa-search-plus"></i>
+                        </button>
+                        <button class="cam-control" data-camera="3" data-action="record">
+                            <i class="fas fa-record-vinyl"></i>
+                        </button>
+                        <button class="cam-control" data-camera="3" data-action="settings">
+                            <i class="fas fa-cog"></i>
+                        </button>
+                        <button class="cam-control" data-camera="3" data-action="fullscreen">
+                            <i class="fas fa-expand"></i>
+                        </button>
+                    </div>
+                    <div class="camera-info">
+                        <span><i class="fas fa-map-marker-alt"></i> Setor A - Inferior</span>
+                        <span><i class="fas fa-thermometer"></i> 52°C</span>
+                    </div>
+                </div>
+
+                <!-- Câmera 4 -->
+                <div class="camera-card" data-camera="4">
+                    <div class="camera-header">
+                        <div class="camera-title">
+                            <i class="fas fa-video"></i>
+                            <span>Câmera 04 - Pilha Sul</span>
+                        </div>
+                        <div class="camera-status active">
+                            <div class="status-dot"></div>
+                            <span>LIVE</span>
+                        </div>
+                    </div>
+                    <div class="camera-view">
+                        <div class="video-placeholder" id="camera-4">
+                            <div class="recording-indicator" style="display: none;">
+                                <div class="recording-dot"></div>
+                                <span>REC</span>
+                            </div>
+                            <div class="simulated-video">
+                                <div class="video-overlay">
+                                    <div class="video-time">15:42:29</div>
+                                    <div class="video-temp">67°C</div>
+                                </div>
+                                <div class="video-simulation">
+                                    <div class="simulation-content">
+                                        <div class="bagaco-pile"></div>
+                                        <div class="temperature-glow high"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="camera-controls">
+                        <button class="cam-control" data-camera="4" data-action="zoom-in">
+                            <i class="fas fa-search-plus"></i>
+                        </button>
+                        <button class="cam-control" data-camera="4" data-action="record">
+                            <i class="fas fa-record-vinyl"></i>
+                        </button>
+                        <button class="cam-control" data-camera="4" data-action="settings">
+                            <i class="fas fa-cog"></i>
+                        </button>
+                        <button class="cam-control" data-camera="4" data-action="fullscreen">
+                            <i class="fas fa-expand"></i>
+                        </button>
+                    </div>
+                    <div class="camera-info">
+                        <span><i class="fas fa-map-marker-alt"></i> Setor B - Superior</span>
+                        <span><i class="fas fa-thermometer"></i> 67°C</span>
+                    </div>
+                </div>
+
+                <!-- Câmera 5 -->
+                <div class="camera-card" data-camera="5">
+                    <div class="camera-header">
+                        <div class="camera-title">
+                            <i class="fas fa-video"></i>
+                            <span>Câmera 05 - Pilha Sul</span>
+                        </div>
+                        <div class="camera-status active">
+                            <div class="status-dot"></div>
+                            <span>LIVE</span>
+                        </div>
+                    </div>
+                    <div class="camera-view">
+                        <div class="video-placeholder" id="camera-5">
+                            <div class="recording-indicator" style="display: none;">
+                                <div class="recording-dot"></div>
+                                <span>REC</span>
+                            </div>
+                            <div class="simulated-video">
+                                <div class="video-overlay">
+                                    <div class="video-time">15:42:31</div>
+                                    <div class="video-temp">61°C</div>
+                                </div>
+                                <div class="video-simulation">
+                                    <div class="simulation-content">
+                                        <div class="bagaco-pile"></div>
+                                        <div class="temperature-glow medium"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="camera-controls">
+                        <button class="cam-control" data-camera="5" data-action="zoom-in">
+                            <i class="fas fa-search-plus"></i>
+                        </button>
+                        <button class="cam-control" data-camera="5" data-action="record">
+                            <i class="fas fa-record-vinyl"></i>
+                        </button>
+                        <button class="cam-control" data-camera="5" data-action="settings">
+                            <i class="fas fa-cog"></i>
+                        </button>
+                        <button class="cam-control" data-camera="5" data-action="fullscreen">
+                            <i class="fas fa-expand"></i>
+                        </button>
+                    </div>
+                    <div class="camera-info">
+                        <span><i class="fas fa-map-marker-alt"></i> Setor B - Central</span>
+                        <span><i class="fas fa-thermometer"></i> 61°C</span>
+                    </div>
+                </div>
+
+                <!-- Câmera 6 -->
+                <div class="camera-card" data-camera="6">
+                    <div class="camera-header">
+                        <div class="camera-title">
+                            <i class="fas fa-video"></i>
+                            <span>Câmera 06 - Pilha Sul</span>
+                        </div>
+                        <div class="camera-status active">
+                            <div class="status-dot"></div>
+                            <span>LIVE</span>
+                        </div>
+                    </div>
+                    <div class="camera-view">
+                        <div class="video-placeholder" id="camera-6">
+                            <div class="recording-indicator" style="display: none;">
+                                <div class="recording-dot"></div>
+                                <span>REC</span>
+                            </div>
+                            <div class="simulated-video">
+                                <div class="video-overlay">
+                                    <div class="video-time">15:42:33</div>
+                                    <div class="video-temp">55°C</div>
+                                </div>
+                                <div class="video-simulation">
+                                    <div class="simulation-content">
+                                        <div class="bagaco-pile"></div>
+                                        <div class="temperature-glow low"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="camera-controls">
+                        <button class="cam-control" data-camera="6" data-action="zoom-in">
+                            <i class="fas fa-search-plus"></i>
+                        </button>
+                        <button class="cam-control" data-camera="6" data-action="record">
+                            <i class="fas fa-record-vinyl"></i>
+                        </button>
+                        <button class="cam-control" data-camera="6" data-action="settings">
+                            <i class="fas fa-cog"></i>
+                        </button>
+                        <button class="cam-control" data-camera="6" data-action="fullscreen">
+                            <i class="fas fa-expand"></i>
+                        </button>
+                    </div>
+                    <div class="camera-info">
+                        <span><i class="fas fa-map-marker-alt"></i> Setor B - Inferior</span>
+                        <span><i class="fas fa-thermometer"></i> 55°C</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Painel de Controle -->
+        <div class="control-panel">
+            <div class="panel-section">
+                <h3><i class="fas fa-sliders-h"></i> Controles Globais</h3>
+                <div class="control-grid">
+                    <button class="control-btn" id="record-all">
+                        <i class="fas fa-record-vinyl"></i>
+                        <span>Gravar Todas</span>
+                    </button>
+                    <button class="control-btn" id="pause-all">
+                        <i class="fas fa-pause"></i>
+                        <span>Pausar Todas</span>
+                    </button>
+                    <button class="control-btn" id="night-vision">
+                        <i class="fas fa-moon"></i>
+                        <span>Visão Noturna</span>
+                    </button>
+                    <button class="control-btn" id="thermal-view">
+                        <i class="fas fa-fire"></i>
+                        <span>Visão Térmica</span>
+                    </button>
+                </div>
+            </div>
+            
+            <div class="panel-section">
+                <h3><i class="fas fa-info-circle"></i> Status do Sistema</h3>
+                <div class="status-grid">
+                    <div class="status-item">
+                        <div class="status-label">Câmeras Ativas</div>
+                        <div class="status-value" id="active-cameras">6/6</div>
+                    </div>
+                    <div class="status-item">
+                        <div class="status-label">Gravação</div>
+                        <div class="status-value" id="recording-status">Inativa</div>
+                    </div>
+                    <div class="status-item">
+                        <div class="status-label">Temp. Máxima</div>
+                        <div class="status-value" id="max-temperature">67°C</div>
+                    </div>
+                    <div class="status-item">
+                        <div class="status-label">Último Alerta</div>
+                        <div class="status-value" id="last-alert">Nenhum</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Modal para Adicionar Câmera -->
+    <div class="modal" id="add-camera-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3><i class="fas fa-plus-circle"></i> Adicionar Nova Câmera</h3>
+                <button class="modal-close" id="close-modal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="camera-name">Nome da Câmera</label>
+                    <input type="text" id="camera-name" placeholder="Ex: Câmera 07 - Pilha Leste">
+                </div>
+                <div class="form-group">
+                    <label for="camera-url">URL/IP da Câmera</label>
+                    <input type="text" id="camera-url" placeholder="rtsp://192.168.1.100:554/stream">
+                </div>
+                <div class="form-group">
+                    <label for="camera-location">Localização</label>
+                    <select id="camera-location">
+                        <option value="norte-superior">Pilha Norte - Superior</option>
+                        <option value="norte-central">Pilha Norte - Central</option>
+                        <option value="norte-inferior">Pilha Norte - Inferior</option>
+                        <option value="sul-superior">Pilha Sul - Superior</option>
+                        <option value="sul-central">Pilha Sul - Central</option>
+                        <option value="sul-inferior">Pilha Sul - Inferior</option>
+                        <option value="leste">Pilha Leste</option>
+                        <option value="oeste">Pilha Oeste</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="camera-type">Tipo de Câmera</label>
+                    <select id="camera-type">
+                        <option value="normal">Visível</option>
+                        <option value="thermal">Térmica</option>
+                        <option value="night">Visão Noturna</option>
+                    </select>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-secondary" id="cancel-add">Cancelar</button>
+                <button class="btn-primary" id="save-camera">Adicionar Câmera</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Sistema de Monitoramento por Câmeras
+        class CameraSystem {
+            constructor() {
+                this.cameras = {};
+                this.recording = false;
+                this.nightVision = false;
+                this.thermalView = false;
+                this.gridLayout = 'grid'; // grid, list, focus
+                this.alerts = [];
+                this.maxCameras = 6;
+                this.cameraCount = 6;
+                
+                this.init();
+            }
+            
+            init() {
+                this.setupEventListeners();
+                this.updateTime();
+                this.simulateCameraFeeds();
+                
+                // Atualizar tempo a cada segundo
+                setInterval(() => this.updateTime(), 1000);
+                
+                // Simular atualizações das câmeras
+                setInterval(() => this.updateCameraFeeds(), 2000);
+                
+                // Simular alertas ocasionais
+                setInterval(() => this.simulateAlerts(), 10000);
+            }
+            
+            setupEventListeners() {
+                // Menu
+                document.querySelectorAll('.menu-item').forEach(item => {
+                    item.addEventListener('click', (e) => {
+                        if (!item.href || item.href === '#') {
+                            e.preventDefault();
+                        }
+                        document.querySelectorAll('.menu-item').forEach(i => i.classList.remove('active'));
+                        item.classList.add('active');
+                    });
+                });
+                
+                // Controles de grade
+                document.getElementById('grid-toggle').addEventListener('click', () => {
+                    this.toggleGridLayout();
+                });
+                
+                // Gravação
+                document.getElementById('record-toggle').addEventListener('click', () => {
+                    this.toggleRecording();
+                });
+                
+                document.getElementById('record-all').addEventListener('click', () => {
+                    this.toggleRecording();
+                });
+                
+                // Tela cheia
+                document.getElementById('fullscreen-btn').addEventListener('click', () => {
+                    this.toggleFullscreen();
+                });
+                
+                // Visão noturna/térmica
+                document.getElementById('night-vision').addEventListener('click', () => {
+                    this.toggleNightVision();
+                });
+                
+                document.getElementById('thermal-view').addEventListener('click', () => {
+                    this.toggleThermalView();
+                });
+                
+                // Pausar todas
+                document.getElementById('pause-all').addEventListener('click', () => {
+                    this.pauseAllCameras();
+                });
+                
+                // Adicionar câmera
+                document.getElementById('add-camera-btn').addEventListener('click', () => {
+                    this.showAddCameraModal();
+                });
+                
+                document.getElementById('close-modal').addEventListener('click', () => {
+                    this.hideAddCameraModal();
+                });
+                
+                document.getElementById('cancel-add').addEventListener('click', () => {
+                    this.hideAddCameraModal();
+                });
+                
+                document.getElementById('save-camera').addEventListener('click', () => {
+                    this.addNewCamera();
+                });
+                
+                // Fechar alerta
+                document.getElementById('close-alert').addEventListener('click', () => {
+                    document.getElementById('alert-banner').style.display = 'none';
+                });
+                
+                // Controles individuais das câmeras
+                document.querySelectorAll('.cam-control').forEach(button => {
+                    button.addEventListener('click', (e) => {
+                        const cameraId = e.target.closest('.cam-control').dataset.camera;
+                        const action = e.target.closest('.cam-control').dataset.action;
+                        this.handleCameraControl(cameraId, action);
+                    });
+                });
+                
+                // Histórico de alertas
+                document.getElementById('alert-history').addEventListener('click', () => {
+                    this.showAlertHistory();
+                });
+                
+                // Detectar tecla ESC para fechar modal
+                document.addEventListener('keydown', (e) => {
+                    if (e.key === 'Escape') {
+                        if (document.getElementById('add-camera-modal').classList.contains('active')) {
+                            this.hideAddCameraModal();
+                        }
+                    }
+                });
+            }
+            
+            updateTime() {
+                const now = new Date();
+                const timeString = now.toLocaleTimeString('pt-BR');
+                const dateString = now.toLocaleDateString('pt-BR');
+                
+                document.getElementById('current-time').textContent = timeString;
+                
+                // Atualizar tempo nos vídeos simulados
+                document.querySelectorAll('.video-time').forEach(element => {
+                    element.textContent = timeString;
+                });
+            }
+            
+            simulateCameraFeeds() {
+                // Temperaturas iniciais para cada câmera
+                const initialTemps = {
+                    1: { temp: 64, status: 'high' },
+                    2: { temp: 58, status: 'medium' },
+                    3: { temp: 52, status: 'low' },
+                    4: { temp: 67, status: 'high' },
+                    5: { temp: 61, status: 'medium' },
+                    6: { temp: 55, status: 'low' }
+                };
+                
+                for (let i = 1; i <= 6; i++) {
+                    this.cameras[i] = {
+                        id: i,
+                        name: `Câmera ${i.toString().padStart(2, '0')}`,
+                        temperature: initialTemps[i].temp,
+                        status: 'active',
+                        recording: false,
+                        location: i <= 3 ? 'Pilha Norte' : 'Pilha Sul',
+                        position: i % 3 === 1 ? 'Superior' : i % 3 === 2 ? 'Central' : 'Inferior'
+                    };
+                    
+                    this.updateCameraDisplay(i);
+                }
+                
+                this.updateSystemStatus();
+            }
+            
+            updateCameraFeeds() {
+                // Simular variação de temperatura nas câmeras
+                for (let i = 1; i <= 6; i++) {
+                    if (this.cameras[i] && this.cameras[i].status === 'active') {
+                        // Variação aleatória de temperatura (-1 a +1 grau)
+                        const change = (Math.random() - 0.5) * 2;
+                        this.cameras[i].temperature = Math.max(30, Math.min(90, this.cameras[i].temperature + change));
+                        
+                        // Atualizar display
+                        this.updateCameraDisplay(i);
+                        
+                        // Verificar alertas
+                        this.checkCameraAlerts(i);
+                    }
+                }
+                
+                this.updateSystemStatus();
+            }
+            
+            updateCameraDisplay(cameraId) {
+                const camera = this.cameras[cameraId];
+                if (!camera) return;
+                
+                // Atualizar temperatura no display
+                const tempElement = document.querySelector(`#camera-${cameraId} .video-temp`);
+                const cameraCard = document.querySelector(`[data-camera="${cameraId}"]`);
+                const tempInfoElement = cameraCard.querySelector('.camera-info span:last-child');
+                
+                if (tempElement) {
+                    tempElement.textContent = `${camera.temperature.toFixed(1)}°C`;
+                    
+                    // Atualizar cor baseada na temperatura
+                    if (camera.temperature >= 70) {
+                        tempElement.style.backgroundColor = 'rgba(239, 68, 68, 0.8)';
+                        this.updateCameraVisual(cameraId, 'high');
+                    } else if (camera.temperature >= 60) {
+                        tempElement.style.backgroundColor = 'rgba(249, 115, 22, 0.8)';
+                        this.updateCameraVisual(cameraId, 'medium');
+                    } else {
+                        tempElement.style.backgroundColor = 'rgba(16, 185, 129, 0.8)';
+                        this.updateCameraVisual(cameraId, 'low');
+                    }
+                }
+                
+                // Atualizar informação da câmera
+                if (tempInfoElement) {
+                    tempInfoElement.innerHTML = `<i class="fas fa-thermometer"></i> ${camera.temperature.toFixed(1)}°C`;
+                }
+                
+                // Atualizar indicador de gravação
+                const recordingIndicator = document.querySelector(`#camera-${cameraId} .recording-indicator`);
+                if (recordingIndicator) {
+                    recordingIndicator.style.display = camera.recording ? 'flex' : 'none';
+                }
+            }
+            
+            updateCameraVisual(cameraId, level) {
+                const cameraCard = document.querySelector(`[data-camera="${cameraId}"]`);
+                const glowElement = cameraCard.querySelector('.temperature-glow');
+                
+                // Remover todas as classes de temperatura
+                cameraCard.classList.remove('alert', 'critical');
+                glowElement.className = 'temperature-glow';
+                
+                // Aplicar classes baseadas no nível
+                switch(level) {
+                    case 'high':
+                        glowElement.classList.add('high');
+                        glowElement.style.animationDuration = '1.5s';
+                        cameraCard.classList.add('alert');
+                        break;
+                    case 'medium':
+                        glowElement.classList.add('medium');
+                        glowElement.style.animationDuration = '2s';
+                        break;
+                    case 'low':
+                        glowElement.classList.add('low');
+                        glowElement.style.animationDuration = '3s';
+                        break;
+                }
+            }
+            
+            checkCameraAlerts(cameraId) {
+                const camera = this.cameras[cameraId];
+                if (!camera) return;
+                
+                const cameraCard = document.querySelector(`[data-camera="${cameraId}"]`);
+                
+                // Remover classes de alerta anteriores
+                cameraCard.classList.remove('alert', 'critical');
+                
+                // Verificar se precisa de alerta
+                if (camera.temperature >= 80) {
+                    // Crítico
+                    cameraCard.classList.add('critical');
+                    this.addAlert(`ALERTA CRÍTICO: Câmera ${cameraId} - ${camera.temperature.toFixed(1)}°C`, 'critical');
+                } else if (camera.temperature >= 70) {
+                    // Alerta
+                    cameraCard.classList.add('alert');
+                    this.addAlert(`Alerta: Câmera ${cameraId} - ${camera.temperature.toFixed(1)}°C`, 'warning');
+                }
+            }
+            
+            addAlert(message, type) {
+                const now = new Date();
+                const alert = {
+                    id: Date.now(),
+                    message: message,
+                    type: type,
+                    timestamp: now.toISOString(),
+                    camera: message.includes('Câmera') ? parseInt(message.match(/Câmera (\d+)/)[1]) : null
+                };
+                
+                this.alerts.unshift(alert);
+                
+                // Manter apenas os últimos 50 alertas
+                if (this.alerts.length > 50) {
+                    this.alerts.pop();
+                }
+                
+                // Mostrar alerta no banner
+                this.showAlertBanner(message, type);
+                
+                // Atualizar status do sistema
+                const timeString = now.getHours().toString().padStart(2, '0') + ':' + now.getMinutes().toString().padStart(2, '0');
+                document.getElementById('last-alert').textContent = timeString;
+            }
+            
+            showAlertBanner(message, type) {
+                const banner = document.getElementById('alert-banner');
+                const alertMessage = document.getElementById('alert-message');
+                const alertIcon = banner.querySelector('i');
+                
+                // Alterar cor do banner baseada no tipo
+                if (type === 'critical') {
+                    banner.style.background = 'linear-gradient(90deg, #ef4444, #dc2626)';
+                    alertIcon.className = 'fas fa-fire';
+                } else if (type === 'warning') {
+                    banner.style.background = 'linear-gradient(90deg, #f59e0b, #d97706)';
+                    alertIcon.className = 'fas fa-exclamation-triangle';
+                } else {
+                    banner.style.background = 'linear-gradient(90deg, #3b82f6, #1d4ed8)';
+                    alertIcon.className = 'fas fa-info-circle';
+                }
+                
+                alertMessage.textContent = message;
+                banner.style.display = 'flex';
+                
+                // Se for crítico, piscar o título da página
+                if (type === 'critical') {
+                    this.flashPageTitle('ALERTA CRÍTICO!');
+                }
+                
+                // Auto-fechar alertas não críticos após 10 segundos
+                if (type !== 'critical') {
+                    setTimeout(() => {
+                        banner.style.display = 'none';
+                    }, 10000);
+                }
+            }
+            
+            flashPageTitle(alertText) {
+                let originalTitle = document.title;
+                let isOriginal = true;
+                let flashCount = 0;
+                const maxFlashes = 15;
+                
+                const flashInterval = setInterval(() => {
+                    document.title = isOriginal ? alertText : originalTitle;
+                    isOriginal = !isOriginal;
+                    flashCount++;
+                    
+                    if (flashCount >= maxFlashes) {
+                        clearInterval(flashInterval);
+                        document.title = originalTitle;
+                    }
+                }, 500);
+            }
+            
+            updateSystemStatus() {
+                // Contar câmeras ativas
+                const activeCameras = Object.values(this.cameras).filter(cam => cam.status === 'active').length;
+                document.getElementById('active-cameras').textContent = `${activeCameras}/${this.cameraCount}`;
+                
+                // Status de gravação
+                const recordingCameras = Object.values(this.cameras).filter(cam => cam.recording).length;
+                const recordingStatus = document.getElementById('recording-status');
+                recordingStatus.textContent = this.recording ? `Ativa (${recordingCameras})` : 'Inativa';
+                recordingStatus.style.color = this.recording ? '#ef4444' : '#94a3b8';
+                
+                // Temperatura máxima
+                const temps = Object.values(this.cameras).map(cam => cam.temperature);
+                const maxTemp = Math.max(...temps);
+                const maxTempElement = document.getElementById('max-temperature');
+                maxTempElement.textContent = `${maxTemp.toFixed(1)}°C`;
+                
+                // Cor da temperatura máxima
+                if (maxTemp >= 70) {
+                    maxTempElement.style.color = '#ef4444';
+                } else if (maxTemp >= 60) {
+                    maxTempElement.style.color = '#f59e0b';
+                } else {
+                    maxTempElement.style.color = '#10b981';
+                }
+            }
+            
+            toggleGridLayout() {
+                const grid = document.getElementById('camera-grid');
+                const toggleBtn = document.getElementById('grid-toggle');
+                
+                if (this.gridLayout === 'grid') {
+                    // Mudar para lista (1 coluna)
+                    grid.style.gridTemplateColumns = '1fr';
+                    this.gridLayout = 'list';
+                    toggleBtn.innerHTML = '<i class="fas fa-th-large"></i> Grade 2x3';
+                } else if (this.gridLayout === 'list') {
+                    // Mudar para foco (câmera principal maior)
+                    grid.style.gridTemplateColumns = '2fr 1fr 1fr';
+                    this.gridLayout = 'focus';
+                    toggleBtn.innerHTML = '<i class="fas fa-th"></i> Grade Normal';
+                } else {
+                    // Voltar para grade normal
+                    grid.style.gridTemplateColumns = 'repeat(auto-fit, minmax(400px, 1fr))';
+                    this.gridLayout = 'grid';
+                    toggleBtn.innerHTML = '<i class="fas fa-list"></i> Lista';
+                }
+            }
+            
+            toggleRecording() {
+                this.recording = !this.recording;
+                
+                const recordBtn = document.getElementById('record-toggle');
+                const recordAllBtn = document.getElementById('record-all');
+                
+                if (this.recording) {
+                    // Iniciar gravação em todas as câmeras
+                    for (let i = 1; i <= 6; i++) {
+                        this.cameras[i].recording = true;
+                        this.updateCameraRecordingIndicator(i, true);
+                    }
+                    
+                    recordBtn.innerHTML = '<i class="fas fa-stop"></i> Parar';
+                    recordBtn.style.backgroundColor = '#ef4444';
+                    recordAllBtn.innerHTML = '<i class="fas fa-stop"></i> <span>Parar Todas</span>';
+                    recordAllBtn.classList.add('danger');
+                    
+                    this.addAlert('Gravação iniciada em todas as câmeras', 'info');
+                } else {
+                    // Parar gravação em todas as câmeras
+                    for (let i = 1; i <= 6; i++) {
+                        this.cameras[i].recording = false;
+                        this.updateCameraRecordingIndicator(i, false);
+                    }
+                    
+                    recordBtn.innerHTML = '<i class="fas fa-record-vinyl"></i> Gravar';
+                    recordBtn.style.backgroundColor = '';
+                    recordAllBtn.innerHTML = '<i class="fas fa-record-vinyl"></i> <span>Gravar Todas</span>';
+                    recordAllBtn.classList.remove('danger');
+                    
+                    this.addAlert('Gravação parada', 'info');
+                }
+                
+                this.updateSystemStatus();
+            }
+            
+            updateCameraRecordingIndicator(cameraId, isRecording) {
+                const recordBtn = document.querySelector(`[data-camera="${cameraId}"][data-action="record"]`);
+                if (recordBtn) {
+                    if (isRecording) {
+                        recordBtn.innerHTML = '<i class="fas fa-stop"></i>';
+                        recordBtn.classList.add('active');
+                    } else {
+                        recordBtn.innerHTML = '<i class="fas fa-record-vinyl"></i>';
+                        recordBtn.classList.remove('active');
+                    }
+                }
+            }
+            
+            toggleFullscreen() {
+                const elem = document.documentElement;
+                
+                if (!document.fullscreenElement) {
+                    if (elem.requestFullscreen) {
+                        elem.requestFullscreen();
+                    } else if (elem.webkitRequestFullscreen) {
+                        elem.webkitRequestFullscreen();
+                    } else if (elem.msRequestFullscreen) {
+                        elem.msRequestFullscreen();
+                    }
+                    
+                    document.getElementById('fullscreen-btn').innerHTML = '<i class="fas fa-compress"></i> Sair Tela Cheia';
+                } else {
+                    if (document.exitFullscreen) {
+                        document.exitFullscreen();
+                    } else if (document.webkitExitFullscreen) {
+                        document.webkitExitFullscreen();
+                    } else if (document.msExitFullscreen) {
+                        document.msExitFullscreen();
+                    }
+                    
+                    document.getElementById('fullscreen-btn').innerHTML = '<i class="fas fa-expand"></i> Tela Cheia';
+                }
+            }
+            
+            toggleNightVision() {
+                this.nightVision = !this.nightVision;
+                const nightBtn = document.getElementById('night-vision');
+                
+                if (this.nightVision) {
+                    document.body.classList.add('night-vision');
+                    nightBtn.innerHTML = '<i class="fas fa-sun"></i> <span>Visão Normal</span>';
+                    nightBtn.classList.add('active');
+                    this.addAlert('Visão noturna ativada', 'info');
+                } else {
+                    document.body.classList.remove('night-vision');
+                    nightBtn.innerHTML = '<i class="fas fa-moon"></i> <span>Visão Noturna</span>';
+                    nightBtn.classList.remove('active');
+                    this.addAlert('Visão noturna desativada', 'info');
+                }
+            }
+            
+            toggleThermalView() {
+                this.thermalView = !this.thermalView;
+                const thermalBtn = document.getElementById('thermal-view');
+                
+                if (this.thermalView) {
+                    document.body.classList.add('thermal-view');
+                    thermalBtn.innerHTML = '<i class="fas fa-eye"></i> <span>Visão Normal</span>';
+                    thermalBtn.classList.add('active');
+                    this.addAlert('Visão térmica ativada', 'info');
+                } else {
+                    document.body.classList.remove('thermal-view');
+                    thermalBtn.innerHTML = '<i class="fas fa-fire"></i> <span>Visão Térmica</span>';
+                    thermalBtn.classList.remove('active');
+                    this.addAlert('Visão térmica desativada', 'info');
+                }
+            }
+            
+            pauseAllCameras() {
+                const pauseBtn = document.getElementById('pause-all');
+                const isPaused = pauseBtn.innerHTML.includes('Retomar');
+                
+                if (isPaused) {
+                    // Retomar todas as câmeras
+                    for (let i = 1; i <= 6; i++) {
+                        this.cameras[i].status = 'active';
+                        this.updateCameraStatusDisplay(i);
+                    }
+                    
+                    pauseBtn.innerHTML = '<i class="fas fa-pause"></i> <span>Pausar Todas</span>';
+                    pauseBtn.classList.remove('warning');
+                    this.addAlert('Todas as câmeras retomadas', 'info');
+                } else {
+                    // Pausar todas as câmeras
+                    for (let i = 1; i <= 6; i++) {
+                        this.cameras[i].status = 'paused';
+                        this.updateCameraStatusDisplay(i);
+                    }
+                    
+                    pauseBtn.innerHTML = '<i class="fas fa-play"></i> <span>Retomar Todas</span>';
+                    pauseBtn.classList.add('warning');
+                    this.addAlert('Todas as câmeras pausadas', 'info');
+                }
+                
+                this.updateSystemStatus();
+            }
+            
+            updateCameraStatusDisplay(cameraId) {
+                const camera = this.cameras[cameraId];
+                const cameraCard = document.querySelector(`[data-camera="${cameraId}"]`);
+                const statusElement = cameraCard.querySelector('.camera-status');
+                
+                if (camera.status === 'active') {
+                    statusElement.innerHTML = '<div class="status-dot"></div><span>LIVE</span>';
+                    statusElement.classList.remove('inactive');
+                    statusElement.classList.add('active');
+                } else {
+                    statusElement.innerHTML = '<div class="status-dot"></div><span>PAUSED</span>';
+                    statusElement.classList.remove('active');
+                    statusElement.classList.add('inactive');
+                }
+            }
+            
+            handleCameraControl(cameraId, action) {
+                const camera = this.cameras[cameraId];
+                if (!camera) return;
+                
+                switch (action) {
+                    case 'zoom-in':
+                        this.zoomCamera(cameraId);
+                        break;
+                    case 'record':
+                        this.toggleCameraRecording(cameraId);
+                        break;
+                    case 'settings':
+                        this.showCameraSettings(cameraId);
+                        break;
+                    case 'fullscreen':
+                        this.fullscreenCamera(cameraId);
+                        break;
+                }
+            }
+            
+            zoomCamera(cameraId) {
+                this.addAlert(`Zoom ativado na Câmera ${cameraId}`, 'info');
+                // Em um sistema real, isso controlaria o zoom óptico/digital da câmera
+            }
+            
+            toggleCameraRecording(cameraId) {
+                const camera = this.cameras[cameraId];
+                camera.recording = !camera.recording;
+                
+                const recordBtn = document.querySelector(`[data-camera="${cameraId}"][data-action="record"]`);
+                
+                if (camera.recording) {
+                    recordBtn.innerHTML = '<i class="fas fa-stop"></i>';
+                    recordBtn.classList.add('active');
+                    this.addAlert(`Gravação iniciada - Câmera ${cameraId}`, 'info');
+                } else {
+                    recordBtn.innerHTML = '<i class="fas fa-record-vinyl"></i>';
+                    recordBtn.classList.remove('active');
+                    this.addAlert(`Gravação parada - Câmera ${cameraId}`, 'info');
+                }
+                
+                this.updateCameraRecordingIndicator(cameraId, camera.recording);
+                this.updateSystemStatus();
+            }
+            
+            showCameraSettings(cameraId) {
+                this.addAlert(`Abrindo configurações da Câmera ${cameraId}`, 'info');
+                // Em um sistema real, abriria um modal com configurações específicas da câmera
+            }
+            
+            fullscreenCamera(cameraId) {
+                const cameraElement = document.getElementById(`camera-${cameraId}`);
+                
+                if (!document.fullscreenElement) {
+                    if (cameraElement.requestFullscreen) {
+                        cameraElement.requestFullscreen();
+                    }
+                    this.addAlert(`Câmera ${cameraId} em tela cheia`, 'info');
+                } else {
+                    if (document.exitFullscreen) {
+                        document.exitFullscreen();
+                    }
+                    this.addAlert(`Saindo do modo tela cheia`, 'info');
+                }
+            }
+            
+            showAddCameraModal() {
+                document.getElementById('add-camera-modal').classList.add('active');
+            }
+            
+            hideAddCameraModal() {
+                document.getElementById('add-camera-modal').classList.remove('active');
+                
+                // Limpar formulário
+                document.getElementById('camera-name').value = '';
+                document.getElementById('camera-url').value = '';
+                document.getElementById('camera-location').value = 'norte-superior';
+                document.getElementById('camera-type').value = 'normal';
+            }
+            
+            addNewCamera() {
+                const name = document.getElementById('camera-name').value;
+                const url = document.getElementById('camera-url').value;
+                const location = document.getElementById('camera-location').value;
+                const type = document.getElementById('camera-type').value;
+                
+                if (!name || !url) {
+                    alert('Por favor, preencha o nome e a URL da câmera');
+                    return;
+                }
+                
+                // Em um sistema real, aqui adicionaria a câmera ao sistema
+                this.addAlert(`Câmera "${name}" adicionada com sucesso`, 'success');
+                
+                // Fechar modal
+                this.hideAddCameraModal();
+                
+                // Aqui você implementaria a lógica para adicionar uma nova câmera à interface
+                console.log(`Nova câmera adicionada: ${name} (${url}) - ${location} - ${type}`);
+            }
+            
+            showAlertHistory() {
+                if (this.alerts.length === 0) {
+                    alert('Nenhum alerta registrado ainda.');
+                    return;
+                }
+                
+                let historyMessage = 'Histórico de Alertas:\n\n';
+                this.alerts.slice(0, 10).forEach(alert => {
+                    const time = new Date(alert.timestamp).toLocaleTimeString('pt-BR');
+                    historyMessage += `${time} - ${alert.message}\n`;
+                });
+                
+                alert(historyMessage);
+            }
+            
+            simulateAlerts() {
+                // Simular alertas aleatórios (20% de chance)
+                if (Math.random() > 0.8) {
+                    const cameraId = Math.floor(Math.random() * 6) + 1;
+                    const camera = this.cameras[cameraId];
+                    
+                    if (camera && camera.temperature > 65) {
+                        this.addAlert(`Movimento detectado na Câmera ${cameraId} - ${camera.location}`, 'warning');
+                    }
+                }
+            }
+        }
+        
+        // Inicializar o sistema quando a página carregar
+        document.addEventListener('DOMContentLoaded', () => {
+            const cameraSystem = new CameraSystem();
+            
+            // Expor para o console para testes
+            window.cameraSystem = cameraSystem;
+            
+            // Adicionar estilos para visão noturna e térmica
+            const style = document.createElement('style');
+            style.textContent = `
+                .night-vision .video-simulation {
+                    filter: grayscale(100%) brightness(0.5) contrast(2) sepia(1) hue-rotate(60deg);
+                }
+                
+                .thermal-view .video-simulation {
+                    filter: brightness(1.2) contrast(1.5) saturate(2);
+                }
+                
+                .thermal-view .temperature-glow {
+                    opacity: 0.9 !important;
+                }
+                
+                /* Estilos para tela cheia de câmera individual */
+                .camera-view:fullscreen {
+                    width: 100vw;
+                    height: 100vh;
+                    background-color: #000;
+                }
+                
+                .camera-view:fullscreen .video-placeholder {
+                    width: 100%;
+                    height: 100%;
+                }
+                
+                .camera-view:fullscreen .simulated-video {
+                    width: 100%;
+                    height: 100%;
+                }
+            `;
+            document.head.appendChild(style);
+            
+            // Configurar detecção de mudança de tela cheia
+            document.addEventListener('fullscreenchange', () => {
+                const fullscreenBtn = document.getElementById('fullscreen-btn');
+                if (document.fullscreenElement) {
+                    fullscreenBtn.innerHTML = '<i class="fas fa-compress"></i> Sair Tela Cheia';
+                } else {
+                    fullscreenBtn.innerHTML = '<i class="fas fa-expand"></i> Tela Cheia';
+                }
+            });
+        });
+    </script>
+</body>
+</html>

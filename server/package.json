@@ -1,0 +1,26 @@
+{
+  "name": "fireguard-monitor",
+  "version": "1.0.0",
+  "description": "Sistema de monitoramento de temperatura em tempo real para pilhas de bagaço",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "nodemon server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "ws": "^8.13.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.1"
+  },
+  "keywords": [
+    "monitoramento",
+    "temperatura",
+    "incendio",
+    "bagaço",
+    "tempo-real"
+  ],
+  "author": "FireGuard Systems",
+  "license": "MIT"
+}
