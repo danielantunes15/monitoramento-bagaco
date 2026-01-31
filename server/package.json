@@ -1,7 +1,7 @@
 {
   "name": "fireguard-monitor",
-  "version": "2.0.0",
-  "description": "Sistema de monitoramento industrial para pilhas de bagaço - Enterprise Edition",
+  "version": "2.1.0",
+  "description": "Sistema de monitoramento industrial - Enterprise Edition",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
@@ -14,18 +14,12 @@
     "nodemailer": "^6.9.0",
     "telegraf": "^4.12.0",
     "node-cron": "^3.0.0",
-    "cors": "^2.8.5"
+    "cors": "^2.8.5",
+    "axios": "^1.6.0"
   },
   "devDependencies": {
     "nodemon": "^3.0.1"
   },
-  "keywords": [
-    "monitoramento",
-    "iot",
-    "industrial",
-    "bagaço",
-    "scada"
-  ],
   "author": "FireGuard Systems",
   "license": "MIT"
 }
