@@ -1,11 +1,10 @@
 class ProtocolManager {
     constructor() {
-        // Fase 1 já começa "ativa" visualmente para confirmação
         this.currentPhase = 1;
     }
 
     async activatePhase(phaseId) {
-        const btn = document.querySelector(`#phase-${phaseId} .action-btn`);
+        const btn = document.querySelector(`#phase-${phaseId} .btn-activate`);
         const originalText = btn.innerHTML;
         
         // Feedback visual de carregamento
@@ -13,13 +12,13 @@ class ProtocolManager {
         btn.disabled = true;
 
         try {
-            // Chama o Backend
+            // Chama o Backend para registrar e notificar
             const response = await fetch('/api/v1/emergency/trigger', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ 
                     phase: phaseId,
-                    user: 'Operador (Manual)' // Em um sistema real, viria do login
+                    user: 'Operador (Manual)'
                 })
             });
 
@@ -31,22 +30,34 @@ class ProtocolManager {
                 currentCard.classList.add('completed');
                 currentCard.classList.remove('active');
                 
-                // Atualiza botão
-                btn.innerHTML = `<i class="fas fa-check"></i> Enviado: ${new Date().toLocaleTimeString()}`;
+                // Atualiza botão para indicar sucesso (ou esconde, dependendo do CSS)
+                btn.innerHTML = `<i class="fas fa-check"></i> Acionado: ${new Date().toLocaleTimeString()}`;
+
+                // --- LÓGICA ESPECÍFICA DA FASE 4 (BOMBEIROS) ---
+                if (phaseId === 4) {
+                    // Mostra o painel de integração automaticamente
+                    const integrationPanel = document.getElementById('fire-integration-ui');
+                    if (integrationPanel) {
+                        integrationPanel.style.display = 'block';
+                        // Animação simples de entrada
+                        integrationPanel.style.opacity = '0';
+                        setTimeout(() => integrationPanel.style.opacity = '1', 100);
+                        integrationPanel.style.transition = 'opacity 0.5s ease';
+                    }
+                }
 
                 // Desbloqueia próxima fase (se houver)
                 const nextPhaseId = phaseId + 1;
                 const nextCard = document.getElementById(`phase-${nextPhaseId}`);
                 
                 if (nextCard) {
-                    // Pequeno delay para animação
                     setTimeout(() => {
                         nextCard.classList.add('active');
-                        // Scroll suave até o próximo card
                         nextCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
                     }, 500);
-                } else {
-                    alert("⚠️ PROTOCOLO FINAL EXECUTADO. Mantenha a calma e aguarde as autoridades.");
+                } else if (phaseId !== 4) {
+                    // Se não for a fase 4 e não tiver próxima, alerta final
+                    alert("⚠️ PROTOCOLO FINAL EXECUTADO.");
                 }
 
             } else {
