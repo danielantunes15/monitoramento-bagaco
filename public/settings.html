@@ -31,34 +31,63 @@
         <header class="top-header">
             <div class="header-title">
                 <h2><i class="fas fa-cogs"></i> Configurações do Sistema</h2>
-                <p class="page-description">Integrações, Logs e Ajustes Globais</p>
+                <p class="page-description">Integrações, Auditoria e Saúde do Servidor</p>
             </div>
             <div class="header-controls">
-                 <button class="btn-control" onclick="location.reload()"><i class="fas fa-sync"></i> Atualizar</button>
+                 <button class="btn-control" onclick="settingsManager.loadServerHealth()"><i class="fas fa-sync"></i> Atualizar</button>
             </div>
         </header>
 
         <div class="settings-container">
             
+            <section class="settings-card health-card">
+                <div class="card-header">
+                    <h3><i class="fas fa-heartbeat"></i> Saúde da Infraestrutura</h3>
+                    <p>Monitoramento em tempo real dos recursos do servidor.</p>
+                </div>
+                <div class="card-body">
+                    <div class="health-grid">
+                        <div class="health-item">
+                            <div class="health-icon"><i class="fas fa-clock"></i></div>
+                            <div class="health-info">
+                                <span class="label">Tempo de Atividade</span>
+                                <span class="value" id="sys-uptime">--</span>
+                            </div>
+                        </div>
+                        <div class="health-item">
+                            <div class="health-icon"><i class="fas fa-memory"></i></div>
+                            <div class="health-info">
+                                <span class="label">Uso de Memória</span>
+                                <span class="value" id="sys-memory">--%</span>
+                            </div>
+                        </div>
+                        <div class="health-item">
+                            <div class="health-icon"><i class="fas fa-network-wired"></i></div>
+                            <div class="health-info">
+                                <span class="label">Conexão MQTT</span>
+                                <span class="value" id="sys-mqtt">Verificando...</span>
+                            </div>
+                        </div>
+                        <div class="health-item">
+                            <div class="health-icon"><i class="fas fa-users"></i></div>
+                            <div class="health-info">
+                                <span class="label">Clientes Conectados</span>
+                                <span class="value" id="sys-clients">0</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
             <section class="settings-card">
                 <div class="card-header">
-                    <h3><i class="fas fa-shield-alt"></i> Logs de Auditoria e Segurança</h3>
-                    <p>Histórico de ações críticas do sistema.</p>
+                    <h3><i class="fas fa-shield-alt"></i> Logs de Auditoria</h3>
                 </div>
                 <div class="card-body">
                     <div class="table-responsive">
                         <table class="logs-table">
-                            <thead>
-                                <tr>
-                                    <th>Horário</th>
-                                    <th>Ação</th>
-                                    <th>Usuário</th>
-                                    <th>Detalhes</th>
-                                </tr>
-                            </thead>
-                            <tbody id="logs-table-body">
-                                <tr><td colspan="4" style="text-align:center">Carregando logs...</td></tr>
-                            </tbody>
+                            <thead><tr><th>Horário</th><th>Ação</th><th>Usuário</th><th>Detalhes</th></tr></thead>
+                            <tbody id="logs-table-body"><tr><td colspan="4">Carregando...</td></tr></tbody>
                         </table>
                     </div>
                 </div>
@@ -66,28 +95,17 @@
 
             <section class="settings-card">
                 <div class="card-header">
-                    <h3><i class="fas fa-project-diagram"></i> Webhooks & Integrações</h3>
-                    <p>Notificações externas para Slack/Discord.</p>
+                    <h3><i class="fas fa-project-diagram"></i> Webhooks</h3>
                 </div>
                 <div class="card-body">
                     <div class="webhook-form">
                         <h4>Nova Integração</h4>
                         <div class="form-row">
-                            <div class="input-group">
-                                <label>Nome</label>
-                                <input type="text" id="wh-name" placeholder="Ex: Discord TI">
-                            </div>
-                            <div class="input-group flex-2">
-                                <label>URL</label>
-                                <input type="url" id="wh-url" placeholder="https://...">
-                            </div>
+                            <div class="input-group"><label>Nome</label><input type="text" id="wh-name"></div>
+                            <div class="input-group flex-2"><label>URL</label><input type="url" id="wh-url"></div>
                         </div>
-                        <div class="form-row">
-                             <button class="btn-primary" id="btn-add-webhook"><i class="fas fa-plus"></i> Adicionar</button>
-                        </div>
+                        <div class="form-row"><button class="btn-primary" id="btn-add-webhook">Adicionar</button></div>
                     </div>
-                    <div class="divider"></div>
-                    <h4>Integrações Ativas</h4>
                     <div class="webhooks-list" id="webhooks-list"></div>
                 </div>
             </section>
@@ -96,16 +114,5 @@
     </main>
 
     <script src="js/settings.js"></script>
-    <style>
-        /* CSS Rápido para Logs */
-        .logs-table { width: 100%; border-collapse: collapse; font-size: 13px; }
-        .logs-table th { text-align: left; padding: 12px; background: var(--bg-tertiary); color: var(--text-secondary); }
-        .logs-table td { padding: 12px; border-bottom: 1px solid var(--border-color); color: var(--text-primary); }
-        .logs-table tr:hover { background-color: var(--bg-tertiary); }
-        .tag-action { padding: 2px 6px; border-radius: 4px; font-weight: bold; font-size: 10px; }
-        .tag-SYSTEM { background: #3b82f6; color: white; }
-        .tag-ALERT { background: #ef4444; color: white; }
-        .tag-EXPORT { background: #10b981; color: white; }
-    </style>
 </body>
 </html>
