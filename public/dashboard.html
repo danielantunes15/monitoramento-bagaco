@@ -3,19 +3,18 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BEL FIRE - Dashboard Enterprise</title>
+    <title>BEL FIRE - Dashboard de Sensores</title>
+    
     <link rel="stylesheet" href="css/style.css">
     <link rel="stylesheet" href="css/dark-mode.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="css/dashboard.css"> <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body class="dark-mode">
     <nav class="sidebar">
         <div class="logo-container">
-            <div class="logo-icon">
-                <i class="fas fa-fire-extinguisher"></i>
-            </div>
+            <div class="logo-icon"><i class="fas fa-fire-extinguisher"></i></div>
             <div class="logo-text">
                 <h1>BEL FIRE</h1>
                 <p class="subtitle">Enterprise Edition</p>
@@ -23,25 +22,14 @@
         </div>
         
         <div class="menu-items">
-            <a href="index.html" class="menu-item">
-                <i class="fas fa-video"></i>
-                <span data-i18n="cameras">Câmeras</span>
-            </a>
-            <a href="dashboard.html" class="menu-item active">
-                <i class="fas fa-chart-pie"></i>
-                <span data-i18n="dashboard">Dashboard</span>
-            </a>
-            <a href="#" class="menu-item">
-                <i class="fas fa-cogs"></i>
-                <span data-i18n="settings">Configurações</span>
-            </a>
+            <a href="index.html" class="menu-item"><i class="fas fa-video"></i><span>Câmeras</span></a>
+            <a href="dashboard.html" class="menu-item active"><i class="fas fa-thermometer-half"></i><span>Sensores</span></a>
+            <a href="cameras.html" class="menu-item"><i class="fas fa-expand"></i><span>Tela Cheia</span></a>
+            <a href="#" class="menu-item" id="add-sensor-btn"><i class="fas fa-plus-circle"></i><span>Novo Sensor</span></a>
         </div>
         
         <div class="system-status">
-            <div class="status-indicator active">
-                <div class="status-dot"></div>
-                <span data-i18n="online">Online</span>
-            </div>
+            <div class="status-indicator active"><div class="status-dot"></div><span>Online</span></div>
             <div class="current-time" id="current-time">--:--:--</div>
         </div>
     </nav>
@@ -49,126 +37,139 @@
     <main class="main-content">
         <header class="top-header">
             <div class="header-title">
-                <h2><i class="fas fa-tachometer-alt"></i> <span data-i18n="dashboard_title">Dashboard Operacional</span></h2>
-                <p class="page-description" data-i18n="dashboard_desc">Monitoramento de múltiplos vetores de risco em tempo real</p>
+                <h2><i class="fas fa-thermometer-half"></i> Dashboard de Sensores</h2>
+                <p class="page-description">Monitoramento analítico de temperatura e risco</p>
             </div>
-            
             <div class="header-controls">
-                <div class="lang-selector">
-                    <button class="btn-lang" onclick="app.currentLang='pt'; app.cycleLanguage();">PT</button>
-                    <button class="btn-lang" onclick="app.currentLang='en'; app.cycleLanguage();">EN</button>
-                    <button class="btn-lang" onclick="app.currentLang='es'; app.cycleLanguage();">ES</button>
-                </div>
-
-                <button class="btn-control" id="refresh-data" onclick="window.location.reload()">
-                    <i class="fas fa-sync-alt"></i>
-                </button>
-                <button class="btn-control secondary" onclick="app.toggleTheme()">
-                    <i class="fas fa-adjust"></i>
-                </button>
+                <button class="btn-control" id="refresh-data"><i class="fas fa-sync-alt"></i> Atualizar</button>
+                <button class="btn-control" id="export-data"><i class="fas fa-download"></i> Exportar</button>
+                <button class="btn-control secondary" id="settings-btn"><i class="fas fa-cog"></i> Ajustes</button>
             </div>
         </header>
 
         <div class="alert-banner" id="alert-banner" style="display: none;">
             <div class="alert-content">
-                <i class="fas fa-exclamation-triangle"></i>
-                <span id="alert-message">Aguardando dados...</span>
+                <i class="fas fa-info-circle"></i>
+                <span id="alert-message">Sistema Normal</span>
+            </div>
+            <button class="btn-alert-close" id="close-alert"><i class="fas fa-times"></i></button>
+        </div>
+
+        <div class="status-cards">
+            <div class="status-card">
+                <div class="status-icon temperature"><i class="fas fa-thermometer-full"></i></div>
+                <div class="status-info">
+                    <h3>Temperatura Média</h3>
+                    <div class="status-value" id="current-temp">--°C</div>
+                    <div class="status-subtitle" id="temp-status">Calculando...</div>
+                </div>
+            </div>
+            <div class="status-card">
+                <div class="status-icon sensors"><i class="fas fa-microchip"></i></div>
+                <div class="status-info">
+                    <h3>Sensores Ativos</h3>
+                    <div class="status-value" id="active-sensors">0/0</div>
+                    <div class="status-subtitle">Rede Mesh</div>
+                </div>
+            </div>
+            <div class="status-card">
+                <div class="status-icon alerts"><i class="fas fa-exclamation-triangle"></i></div>
+                <div class="status-info">
+                    <h3>Alertas (24h)</h3>
+                    <div class="status-value" id="active-alerts">0</div>
+                    <div class="status-subtitle">Eventos Críticos</div>
+                </div>
             </div>
         </div>
 
         <div class="temperature-panel">
             <div class="panel-header">
-                <h2 data-i18n="general_status">Status Geral da Pilha Principal</h2>
+                <h2><i class="fas fa-fire"></i> Análise Térmica</h2>
+                <div class="temperature-range">
+                    <span class="range-label">Crítico: </span><span class="range-value">> 80°C</span>
+                </div>
             </div>
-            <div class="gauge-container">
-                <div class="gauge-wrapper">
-                    <div class="gauge">
-                        <div class="gauge-fill" id="gauge-fill"></div>
-                        <div class="gauge-center">
-                            <div class="gauge-value" id="gauge-value">--</div>
-                            <div class="gauge-unit">°C</div>
+            
+            <div class="temperature-display">
+                <div class="gauge-container">
+                    <div class="gauge-wrapper">
+                        <div class="gauge">
+                            <div class="gauge-fill" id="gauge-fill"></div>
+                            <div class="gauge-center">
+                                <div class="gauge-value" id="gauge-value">--</div>
+                                <div class="gauge-unit">°C</div>
+                            </div>
+                        </div>
+                        <div class="gauge-labels"><span class="gauge-min">0°C</span><span class="gauge-max">120°C</span></div>
+                    </div>
+                    <div class="gauge-status" id="gauge-status">Aguardando...</div>
+                </div>
+                
+                <div class="temperature-stats">
+                    <div class="stat-card">
+                        <div class="stat-icon"><i class="fas fa-history"></i></div>
+                        <div class="stat-content">
+                            <h4>Pico (24h)</h4>
+                            <div class="stat-value" id="max-temp">--°C</div>
+                            <div class="stat-time" id="max-temp-time">--:--</div>
                         </div>
                     </div>
+                    </div>
+            </div>
+            
+            <div class="temperature-history">
+                <div class="history-header">
+                    <h3><i class="fas fa-chart-line"></i> Tendência</h3>
+                    <div class="history-controls">
+                        <button class="btn-time active" data-hours="24">24h</button>
+                        <button class="btn-time" data-hours="1">1h</button>
+                    </div>
                 </div>
-                <div class="gauge-status" data-i18n="realtime">Tempo Real</div>
+                <div class="chart-container">
+                    <canvas id="temperatureChart"></canvas>
+                </div>
             </div>
         </div>
 
         <div class="sensors-panel">
             <div class="panel-header">
-                <h2><i class="fas fa-microchip"></i> <span data-i18n="active_sensors">Sensores Ativos</span></h2>
+                <h2><i class="fas fa-microchip"></i> Detalhe por Sensor</h2>
+                <div class="sensor-count" id="sensor-count">-- sensores</div>
             </div>
-            
-            <div class="sensors-grid">
-                <div class="sensor-card" data-sensor="1">
-                    <div class="sensor-header">
-                        <div class="sensor-id">Sensor #01</div>
-                        <div class="sensor-status active"><div class="status-dot"></div></div>
-                    </div>
-                    
-                    <div class="sensor-main-value">
-                        <div class="temp-value" id="sensor-1-temp">--°C</div>
-                        <div class="temp-label" data-i18n="temp">Temperatura</div>
-                    </div>
-
-                    <div class="sensor-details-grid">
-                        <div class="detail-item">
-                            <i class="fas fa-tint"></i>
-                            <span id="sensor-1-humid">--%</span>
-                            <small data-i18n="humidity">Umidade</small>
-                        </div>
-                        <div class="detail-item">
-                            <i class="fas fa-compress-arrows-alt"></i>
-                            <span>1013 hPa</span>
-                            <small data-i18n="pressure">Pressão</small>
-                        </div>
-                    </div>
-
-                    <div class="actuator-status">
-                        <div class="actuator" id="sensor-1-fan">
-                            <i class="fas fa-fan"></i> <span data-i18n="fan">Ventilação</span>
-                        </div>
-                        <div class="actuator" id="sensor-1-sprinkler">
-                            <i class="fas fa-shower"></i> <span data-i18n="sprinkler">Sprinkler</span>
-                        </div>
-                    </div>
+            <div class="sensors-grid" id="sensors-grid">
                 </div>
+        </div>
 
-                <div class="sensor-card" data-sensor="2">
-                    <div class="sensor-header">
-                        <div class="sensor-id">Sensor #02</div>
-                        <div class="sensor-status active"><div class="status-dot"></div></div>
-                    </div>
-                    <div class="sensor-main-value">
-                        <div class="temp-value" id="sensor-2-temp">--°C</div>
-                        <div class="temp-label" data-i18n="temp">Temperatura</div>
-                    </div>
-                    <div class="sensor-details-grid">
-                        <div class="detail-item">
-                            <i class="fas fa-tint"></i>
-                            <span id="sensor-2-humid">--%</span>
-                            <small data-i18n="humidity">Umidade</small>
-                        </div>
-                        <div class="detail-item">
-                            <i class="fas fa-compress-arrows-alt"></i>
-                            <span>1012 hPa</span>
-                            <small data-i18n="pressure">Pressão</small>
-                        </div>
-                    </div>
-                    <div class="actuator-status">
-                        <div class="actuator">
-                            <i class="fas fa-fan"></i> <span data-i18n="fan">Ventilação</span>
-                        </div>
-                        <div class="actuator">
-                            <i class="fas fa-shower"></i> <span data-i18n="sprinkler">Sprinkler</span>
-                        </div>
-                    </div>
-                </div>
-
+        <div class="alerts-panel">
+            <div class="panel-header">
+                <h2><i class="fas fa-bell"></i> Log de Eventos</h2>
+                <button class="btn-control" id="clear-alerts"><i class="fas fa-trash"></i> Limpar</button>
+            </div>
+            <div class="alerts-list" id="alerts-list">
                 </div>
         </div>
     </main>
 
+    <div class="modal" id="sensor-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3><i class="fas fa-info-circle"></i> Detalhes do Sensor</h3>
+                <button class="modal-close" id="close-sensor-modal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="sensor-details" id="modal-details-content">
+                    </div>
+                <div class="sensor-chart-container">
+                    <canvas id="sensorDetailChart"></canvas>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-secondary" id="close-modal-btn">Fechar</button>
+                <button class="btn-primary" id="calibrate-modal-btn">Calibrar</button>
+            </div>
+        </div>
+    </div>
+
     <script src="js/app.js"></script>
-</body>
+    <script src="js/dashboard.js"></script> </body>
 </html>
