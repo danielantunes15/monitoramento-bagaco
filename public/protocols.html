@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BEL FIRE - Protocolos de Emergência</title>
+    
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/dark-mode.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;900&display=swap" rel="stylesheet">
+    
+    <style>
+        /* Estilos específicos da Timeline de Emergência */
+        .protocol-container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .timeline {
+            position: relative;
+            padding-left: 50px;
+        }
+
+        /* Linha vertical conectora */
+        .timeline::before {
+            content: '';
+            position: absolute;
+            left: 20px;
+            top: 0;
+            bottom: 0;
+            width: 4px;
+            background: #334155;
+            border-radius: 2px;
+        }
+
+        .phase-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 25px;
+            margin-bottom: 30px;
+            position: relative;
+            opacity: 0.5; /* Inativo por padrão */
+            transition: all 0.3s ease;
+            filter: grayscale(0.8);
+            pointer-events: none; /* Bloqueado */
+        }
+
+        /* Marcador Circular (Número da fase) */
+        .phase-badge {
+            position: absolute;
+            left: -53px;
+            top: 25px;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: #334155;
+            color: white;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 4px solid var(--bg-primary); /* Cria espaço visual */
+            z-index: 2;
+        }
+
+        /* Estados das Fases */
+        .phase-card.active {
+            opacity: 1;
+            filter: grayscale(0);
+            border-color: var(--accent-color);
+            box-shadow: 0 0 20px rgba(0,0,0,0.3);
+            pointer-events: all;
+        }
+
+        .phase-card.completed {
+            opacity: 0.8;
+            border-color: var(--success-color);
+            background: rgba(16, 185, 129, 0.05);
+            pointer-events: none; /* Já passou */
+        }
+        
+        .phase-card.completed .phase-badge { background: var(--success-color); }
+        .phase-card.completed::after {
+            content: '✔ CONCLUÍDO';
+            position: absolute;
+            top: 20px; right: 20px;
+            color: var(--success-color);
+            font-weight: bold;
+            font-size: 12px;
+        }
+
+        /* Cores Específicas por Nível */
+        .phase-card[data-phase="1"].active { border-color: #f59e0b; } /* Amarelo */
+        .phase-card[data-phase="1"].active .phase-badge { background: #f59e0b; }
+
+        .phase-card[data-phase="2"].active { border-color: #f97316; } /* Laranja */
+        .phase-card[data-phase="2"].active .phase-badge { background: #f97316; }
+
+        .phase-card[data-phase="3"].active { border-color: #ef4444; } /* Vermelho */
+        .phase-card[data-phase="3"].active .phase-badge { background: #ef4444; }
+
+        .phase-card[data-phase="4"].active { 
+            border-color: #ef4444; 
+            background: rgba(239, 68, 68, 0.1);
+            animation: pulseCritical 2s infinite;
+        }
+        .phase-card[data-phase="4"].active .phase-badge { background: #ef4444; animation: flash 1s infinite; }
+
+        @keyframes pulseCritical { 0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); } 70% { box-shadow: 0 0 0 15px rgba(239, 68, 68, 0); } 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); } }
+
+        /* Conteúdo do Card */
+        .phase-header h2 { margin: 0; font-size: 20px; }
+        .phase-role { font-size: 14px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 15px; display: block; }
+        
+        .contact-list {
+            background: rgba(0,0,0,0.2);
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+        }
+        
+        .contact-item { display: flex; align-items: center; gap: 10px; margin-bottom: 5px; font-family: monospace; }
+
+        .action-btn {
+            width: 100%;
+            padding: 15px;
+            border: none;
+            border-radius: 8px;
+            font-weight: bold;
+            font-size: 16px;
+            cursor: pointer;
+            text-transform: uppercase;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .btn-activate { background: var(--text-primary); color: var(--bg-primary); }
+        .btn-activate:hover { opacity: 0.9; transform: scale(1.02); }
+        
+        .phase-card[data-phase="1"] .btn-activate { background: #f59e0b; color: black; }
+        .phase-card[data-phase="2"] .btn-activate { background: #f97316; color: white; }
+        .phase-card[data-phase="3"] .btn-activate { background: #ef4444; color: white; }
+        .phase-card[data-phase="4"] .btn-activate { background: #7f1d1d; color: white; border: 2px solid #ef4444; }
+
+    </style>
+</head>
+<body class="dark-mode">
+
+    <nav class="sidebar">
+        <div class="logo-container">
+            <div class="logo-icon"><i class="fas fa-fire-extinguisher"></i></div>
+            <div class="logo-text"><h1>BEL FIRE</h1><p class="subtitle">Enterprise Edition</p></div>
+        </div>
+        <div class="menu-items">
+            <a href="index.html" class="menu-item"><i class="fas fa-video"></i><span>Câmeras</span></a>
+            <a href="dashboard.html" class="menu-item"><i class="fas fa-chart-pie"></i><span>Dashboard</span></a>
+            <a href="monitor3d.html" class="menu-item"><i class="fas fa-cube"></i><span>Digital Twin 3D</span></a>
+            <a href="protocols.html" class="menu-item active"><i class="fas fa-file-medical-alt"></i><span>Protocolos</span></a>
+            <a href="settings.html" class="menu-item"><i class="fas fa-cogs"></i><span>Configurações</span></a>
+        </div>
+        <div class="system-status">
+            <div class="status-indicator active"><div class="status-dot"></div><span>Online</span></div>
+        </div>
+    </nav>
+
+    <main class="main-content">
+        <header class="top-header">
+            <div class="header-title">
+                <h2><i class="fas fa-file-medical-alt"></i> Gestão de Crise e Protocolos</h2>
+                <p class="page-description">Matriz de escalonamento de emergência</p>
+            </div>
+            <div class="header-controls">
+                <button class="btn-control" onclick="location.reload()" style="background:#ef4444; color:white; border:none;">
+                    <i class="fas fa-exclamation-circle"></i> Resetar Status
+                </button>
+            </div>
+        </header>
+
+        <div class="protocol-container">
+            <div class="timeline">
+                
+                <div class="phase-card active" id="phase-1" data-phase="1">
+                    <div class="phase-badge">1</div>
+                    <div class="phase-header">
+                        <h2>Anomalia Identificada</h2>
+                        <span class="phase-role">Nível Operacional</span>
+                    </div>
+                    <p>O sistema identificou variações térmicas anormais. Notificação imediata para equipe de campo.</p>
+                    <div class="contact-list">
+                        <div class="contact-item"><i class="fas fa-user-hard-hat"></i> Supervisor Industrial</div>
+                        <div class="contact-item"><i class="fas fa-user-shield"></i> Técnico de Seg. (TST)</div>
+                    </div>
+                    <button class="action-btn btn-activate" onclick="protocolManager.activatePhase(1)">
+                        <i class="fas fa-bell"></i> Confirmar Alerta Automático
+                    </button>
+                </div>
+
+                <div class="phase-card" id="phase-2" data-phase="2">
+                    <div class="phase-badge">2</div>
+                    <div class="phase-header">
+                        <h2>Princípio de Incêndio</h2>
+                        <span class="phase-role">Nível Tático</span>
+                    </div>
+                    <p>Confirmação visual de fumaça ou fogo. Mobilização da brigada interna.</p>
+                    <div class="contact-list">
+                        <div class="contact-item"><i class="fas fa-fire-extinguisher"></i> Líder da Brigada</div>
+                        <div class="contact-item"><i class="fas fa-clinic-medical"></i> Ambulatório Médico</div>
+                    </div>
+                    <button class="action-btn btn-activate" onclick="protocolManager.activatePhase(2)">
+                        <i class="fas fa-bullhorn"></i> Acionar Brigada
+                    </button>
+                </div>
+
+                <div class="phase-card" id="phase-3" data-phase="3">
+                    <div class="phase-badge">3</div>
+                    <div class="phase-header">
+                        <h2>Incêndio em Progresso</h2>
+                        <span class="phase-role">Nível Estratégico</span>
+                    </div>
+                    <p>Brigada não controlou o foco inicial. Risco ao patrimônio e operações.</p>
+                    <div class="contact-list">
+                        <div class="contact-item"><i class="fas fa-user-tie"></i> Diretoria Bahia Etanol</div>
+                        <div class="contact-item"><i class="fas fa-gavel"></i> Jurídico / Comunicação</div>
+                    </div>
+                    <button class="action-btn btn-activate" onclick="protocolManager.activatePhase(3)">
+                        <i class="fas fa-phone"></i> Notificar Liderança
+                    </button>
+                </div>
+
+                <div class="phase-card" id="phase-4" data-phase="4">
+                    <div class="phase-badge">4</div>
+                    <div class="phase-header">
+                        <h2>CRÍTICO / EVACUAÇÃO</h2>
+                        <span class="phase-role">Apoio Externo</span>
+                    </div>
+                    <p>Perda de controle operacional. Acionamento de autoridades públicas.</p>
+                    <div class="contact-list">
+                        <div class="contact-item"><i class="fas fa-truck-medical"></i> Corpo de Bombeiros (193)</div>
+                        <div class="contact-item"><i class="fas fa-hands-helping"></i> PAM (Plano de Auxílio Mútuo)</div>
+                    </div>
+                    <button class="action-btn btn-activate" onclick="protocolManager.activatePhase(4)">
+                        <i class="fas fa-radiation-alt"></i> Chamar Bombeiros (CBM)
+                    </button>
+                </div>
+
+            </div>
+        </div>
+    </main>
+
+    <script src="js/protocols.js"></script>
+</body>
+</html>

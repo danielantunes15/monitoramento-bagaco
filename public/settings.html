@@ -8,26 +8,23 @@
     <link rel="stylesheet" href="css/style.css">
     <link rel="stylesheet" href="css/dark-mode.css">
     <link rel="stylesheet" href="css/settings.css">
-    
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 </head>
 <body class="dark-mode">
-    
     <nav class="sidebar">
         <div class="logo-container">
             <div class="logo-icon"><i class="fas fa-fire-extinguisher"></i></div>
             <div class="logo-text"><h1>BEL FIRE</h1><p class="subtitle">Enterprise Edition</p></div>
         </div>
-        
         <div class="menu-items">
             <a href="index.html" class="menu-item"><i class="fas fa-video"></i><span>Câmeras</span></a>
             <a href="dashboard.html" class="menu-item"><i class="fas fa-chart-pie"></i><span>Dashboard</span></a>
             <a href="monitor3d.html" class="menu-item"><i class="fas fa-cube"></i><span>Digital Twin 3D</span></a>
+            <a href="protocols.html" class="menu-item"><i class="fas fa-file-medical-alt"></i><span>Protocolos</span></a>
             <a href="cameras.html" class="menu-item"><i class="fas fa-expand"></i><span>Tela Cheia</span></a>
             <a href="settings.html" class="menu-item active"><i class="fas fa-cogs"></i><span>Configurações</span></a>
         </div>
-        
         <div class="system-status">
             <div class="status-indicator active"><div class="status-dot"></div><span>Online</span></div>
         </div>
@@ -55,31 +52,19 @@
                     <div class="health-grid">
                         <div class="health-item">
                             <div class="health-icon"><i class="fas fa-clock"></i></div>
-                            <div class="health-info">
-                                <span class="label">Tempo de Atividade</span>
-                                <span class="value" id="sys-uptime">--</span>
-                            </div>
+                            <div class="health-info"><span class="label">Tempo de Atividade</span><span class="value" id="sys-uptime">--</span></div>
                         </div>
                         <div class="health-item">
                             <div class="health-icon"><i class="fas fa-memory"></i></div>
-                            <div class="health-info">
-                                <span class="label">Uso de Memória</span>
-                                <span class="value" id="sys-memory">--%</span>
-                            </div>
+                            <div class="health-info"><span class="label">Uso de Memória</span><span class="value" id="sys-memory">--%</span></div>
                         </div>
                         <div class="health-item">
                             <div class="health-icon"><i class="fas fa-network-wired"></i></div>
-                            <div class="health-info">
-                                <span class="label">Conexão MQTT</span>
-                                <span class="value" id="sys-mqtt">Verificando...</span>
-                            </div>
+                            <div class="health-info"><span class="label">Conexão MQTT</span><span class="value" id="sys-mqtt">...</span></div>
                         </div>
                         <div class="health-item">
                             <div class="health-icon"><i class="fas fa-users"></i></div>
-                            <div class="health-info">
-                                <span class="label">Clientes Conectados</span>
-                                <span class="value" id="sys-clients">0</span>
-                            </div>
+                            <div class="health-info"><span class="label">Clientes Conectados</span><span class="value" id="sys-clients">0</span></div>
                         </div>
                     </div>
                 </div>
@@ -87,14 +72,14 @@
 
             <section class="settings-card" style="border-color: #ef4444; background: rgba(239, 68, 68, 0.05);">
                 <div class="card-header" style="background: rgba(239, 68, 68, 0.1);">
-                    <h3 style="color: #ef4444;"><i class="fas fa-fire-alt"></i> Integração Corpo de Bombeiros</h3>
-                    <p>Geração de link de acesso externo para equipes de resgate (Visualização Simplificada).</p>
+                    <h3 style="color: #ef4444;"><i class="fas fa-fire-alt"></i> Integração Bombeiros</h3>
+                    <p>Link de acesso externo para equipes de resgate.</p>
                 </div>
                 <div class="card-body">
-                    <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap: wrap; gap: 15px;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:15px;">
                         <div>
-                            <strong>Status da Integração:</strong> <span style="color:#10b981; font-weight:bold;">Ativa (API v2)</span><br>
-                            <small style="color: var(--text-secondary);">Compartilhamento automático de planta baixa e rotas em caso de crítico.</small>
+                            <strong>Status:</strong> <span style="color:#10b981; font-weight:bold;">Ativa</span><br>
+                            <small>Compartilhamento automático de planta baixa.</small>
                         </div>
                         <button class="btn-primary" style="background:#ef4444; border:none;" onclick="window.open('emergency.html', '_blank')">
                             <i class="fas fa-external-link-alt"></i> Abrir Visão de Resgate
@@ -125,8 +110,8 @@
                     <div class="webhook-form">
                         <h4>Nova Integração</h4>
                         <div class="form-row">
-                            <div class="input-group"><label>Nome</label><input type="text" id="wh-name" placeholder="Ex: Slack Ops"></div>
-                            <div class="input-group flex-2"><label>URL</label><input type="url" id="wh-url" placeholder="https://hooks..."></div>
+                            <div class="input-group"><label>Nome</label><input type="text" id="wh-name"></div>
+                            <div class="input-group flex-2"><label>URL</label><input type="url" id="wh-url"></div>
                         </div>
                         <div class="form-row"><button class="btn-primary" id="btn-add-webhook">Adicionar</button></div>
                     </div>

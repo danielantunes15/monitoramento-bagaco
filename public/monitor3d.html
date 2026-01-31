@@ -7,7 +7,6 @@
     
     <link rel="stylesheet" href="css/style.css">
     <link rel="stylesheet" href="css/dark-mode.css">
-    
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     
@@ -21,37 +20,25 @@
     </script>
 
     <style>
-        /* Estilos específicos para o Canvas 3D */
         #canvas-container {
             position: relative;
             width: 100%;
-            height: calc(100vh - 100px); /* Desconta header/margens */
+            height: calc(100vh - 100px);
             background: #000;
             border-radius: 12px;
             overflow: hidden;
             box-shadow: 0 0 20px rgba(0,0,0,0.5);
         }
-        
         .overlay-ui {
             position: absolute;
-            top: 20px;
-            left: 20px;
+            top: 20px; left: 20px;
             background: rgba(0,0,0,0.7);
             padding: 15px;
             border-radius: 8px;
-            pointer-events: none; /* Deixa o mouse passar para o 3D */
+            pointer-events: none;
             border-left: 3px solid var(--accent-color);
         }
-        
-        .legend-item {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            margin-bottom: 5px;
-            font-size: 12px;
-            color: white;
-        }
-        
+        .legend-item { display: flex; align-items: center; gap: 10px; margin-bottom: 5px; font-size: 12px; color: white; }
         .color-dot { width: 12px; height: 12px; border-radius: 50%; }
     </style>
 </head>
@@ -65,7 +52,9 @@
         <div class="menu-items">
             <a href="index.html" class="menu-item"><i class="fas fa-video"></i><span>Câmeras</span></a>
             <a href="dashboard.html" class="menu-item"><i class="fas fa-chart-pie"></i><span>Dashboard</span></a>
-            <a href="monitor3d.html" class="menu-item active"><i class="fas fa-cube"></i><span>Digital Twin 3D</span></a> <a href="cameras.html" class="menu-item"><i class="fas fa-expand"></i><span>Tela Cheia</span></a>
+            <a href="monitor3d.html" class="menu-item active"><i class="fas fa-cube"></i><span>Digital Twin 3D</span></a>
+            <a href="protocols.html" class="menu-item"><i class="fas fa-file-medical-alt"></i><span>Protocolos</span></a>
+            <a href="cameras.html" class="menu-item"><i class="fas fa-expand"></i><span>Tela Cheia</span></a>
             <a href="settings.html" class="menu-item"><i class="fas fa-cogs"></i><span>Configurações</span></a>
         </div>
         <div class="system-status">
@@ -95,5 +84,6 @@
     </main>
 
     <script type="module" src="js/monitor3d.js"></script>
+    <script src="js/app.js"></script>
 </body>
 </html>
