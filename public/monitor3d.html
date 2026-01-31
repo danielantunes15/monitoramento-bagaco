@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BEL FIRE - Digital Twin 3D</title>
+    
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/dark-mode.css">
+    
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+                "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+            }
+        }
+    </script>
+
+    <style>
+        /* Estilos específicos para o Canvas 3D */
+        #canvas-container {
+            position: relative;
+            width: 100%;
+            height: calc(100vh - 100px); /* Desconta header/margens */
+            background: #000;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 0 20px rgba(0,0,0,0.5);
+        }
+        
+        .overlay-ui {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(0,0,0,0.7);
+            padding: 15px;
+            border-radius: 8px;
+            pointer-events: none; /* Deixa o mouse passar para o 3D */
+            border-left: 3px solid var(--accent-color);
+        }
+        
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 5px;
+            font-size: 12px;
+            color: white;
+        }
+        
+        .color-dot { width: 12px; height: 12px; border-radius: 50%; }
+    </style>
+</head>
+<body class="dark-mode">
+    
+    <nav class="sidebar">
+        <div class="logo-container">
+            <div class="logo-icon"><i class="fas fa-fire-extinguisher"></i></div>
+            <div class="logo-text"><h1>BEL FIRE</h1><p class="subtitle">Enterprise Edition</p></div>
+        </div>
+        <div class="menu-items">
+            <a href="index.html" class="menu-item"><i class="fas fa-video"></i><span>Câmeras</span></a>
+            <a href="dashboard.html" class="menu-item"><i class="fas fa-chart-pie"></i><span>Dashboard</span></a>
+            <a href="monitor3d.html" class="menu-item active"><i class="fas fa-cube"></i><span>Digital Twin 3D</span></a> <a href="cameras.html" class="menu-item"><i class="fas fa-expand"></i><span>Tela Cheia</span></a>
+            <a href="settings.html" class="menu-item"><i class="fas fa-cogs"></i><span>Configurações</span></a>
+        </div>
+        <div class="system-status">
+            <div class="status-indicator active"><div class="status-dot"></div><span>Online</span></div>
+        </div>
+    </nav>
+
+    <main class="main-content">
+        <header class="top-header">
+            <div class="header-title">
+                <h2><i class="fas fa-cube"></i> Visualização Espacial 3D</h2>
+                <p class="page-description">Monitoramento volumétrico das pilhas de bagaço</p>
+            </div>
+            <div class="header-controls">
+                <button class="btn-control" id="reset-cam"><i class="fas fa-video"></i> Resetar Câmera</button>
+            </div>
+        </header>
+
+        <div id="canvas-container">
+            <div class="overlay-ui">
+                <h4 style="margin:0 0 10px 0; color:white;">Mapa de Calor</h4>
+                <div class="legend-item"><div class="color-dot" style="background:#10b981"></div> Normal (< 50°C)</div>
+                <div class="legend-item"><div class="color-dot" style="background:#f59e0b"></div> Atenção (50°C - 70°C)</div>
+                <div class="legend-item"><div class="color-dot" style="background:#ef4444"></div> Crítico (> 70°C)</div>
+            </div>
+        </div>
+    </main>
+
+    <script type="module" src="js/monitor3d.js"></script>
+</body>
+</html>
