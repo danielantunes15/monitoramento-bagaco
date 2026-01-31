@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BEL FIRE - Acesso Restrito</title>
+    
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/dark-mode.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+    
+    <style>
+        body {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            background: radial-gradient(circle at center, #1e293b, #0f172a);
+        }
+
+        .login-card {
+            background: var(--bg-card);
+            padding: 40px;
+            border-radius: 16px;
+            width: 100%;
+            max-width: 400px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            border: 1px solid var(--border-color);
+            text-align: center;
+        }
+
+        .logo-area {
+            margin-bottom: 30px;
+            color: var(--accent-color);
+        }
+        .logo-area i { font-size: 40px; margin-bottom: 10px; }
+        .logo-area h1 { margin: 0; font-size: 24px; color: white; }
+        .logo-area p { margin: 5px 0 0; color: var(--text-secondary); font-size: 14px; }
+
+        .form-group { text-align: left; margin-bottom: 20px; }
+        .form-group label { display: block; margin-bottom: 8px; font-size: 12px; color: var(--text-secondary); font-weight: bold; }
+        .form-group input {
+            width: 100%;
+            padding: 12px;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            color: white;
+            font-size: 14px;
+            box-sizing: border-box; /* Garante que o padding não quebre o layout */
+        }
+        .form-group input:focus { outline: 2px solid var(--accent-color); border-color: transparent; }
+
+        .btn-login {
+            width: 100%;
+            padding: 12px;
+            background: var(--accent-color);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-weight: bold;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .btn-login:hover { filter: brightness(1.1); }
+
+        .error-msg {
+            color: #ef4444;
+            font-size: 13px;
+            margin-top: 15px;
+            display: none;
+        }
+        
+        .footer-info { margin-top: 30px; font-size: 11px; color: var(--text-secondary); }
+    </style>
+</head>
+<body>
+
+    <div class="login-card">
+        <div class="logo-area">
+            <i class="fas fa-fire-extinguisher"></i>
+            <h1>BEL FIRE</h1>
+            <p>Enterprise Edition</p>
+        </div>
+
+        <form id="login-form">
+            <div class="form-group">
+                <label>USUÁRIO</label>
+                <input type="text" id="username" placeholder="admin ou operador" required autocomplete="off">
+            </div>
+            <div class="form-group">
+                <label>SENHA</label>
+                <input type="password" id="password" placeholder="••••••••" required>
+            </div>
+            <button type="submit" class="btn-login">ENTRAR</button>
+            <div class="error-msg" id="error-msg"><i class="fas fa-exclamation-circle"></i> Credenciais inválidas</div>
+        </form>
+
+        <div class="footer-info">
+            Sistema de Monitoramento e Prevenção<br>
+            Acesso exclusivo para pessoal autorizado.
+        </div>
+    </div>
+
+    <script src="js/auth.js"></script>
+    <script>
+        // Lógica simples de Login (Frontend bind)
+        document.getElementById('login-form').addEventListener('submit', (e) => {
+            e.preventDefault();
+            const user = document.getElementById('username').value;
+            const pass = document.getElementById('password').value;
+            authManager.login(user, pass);
+        });
+    </script>
+</body>
+</html>

@@ -9,8 +9,8 @@ const cron = require('node-cron');
 const cors = require('cors');
 const axios = require('axios');
 const os = require('os');
-const { exec } = require('child_process');
-const { loadData, saveData } = require('./utils/fileStorage'); // Importa a persistência
+const { exec } = require('child_process'); // Para abrir o navegador
+const { loadData, saveData } = require('./utils/fileStorage'); // Persistência
 
 // --- Configuração do Servidor ---
 const app = express();
@@ -26,9 +26,52 @@ let memoryDb = loadData();
 const MAX_HISTORY = 1000;
 const START_TIME = Date.now();
 
-// Função auxiliar para salvar (chama o utilitário)
+// Função auxiliar para salvar
 function persist() {
     saveData(memoryDb);
+}
+
+// --- CONTROLE DE ACESSO (Usuários) ---
+const USERS = {
+    'admin': { pass: 'admin123', name: 'Administrador', role: 'admin' },
+    'operador': { pass: 'operador123', name: 'Operador de Turno', role: 'operator' },
+    'bombeiro': { pass: 'resgate193', name: 'Comando CBM', role: 'viewer' }
+};
+
+// --- Configurações Gerais ---
+const CONFIG = {
+    telegramToken: 'SEU_TELEGRAM_TOKEN_AQUI', 
+    telegramChatId: 'SEU_CHAT_ID_AQUI',
+    mqttBroker: 'mqtt://broker.hivemq.com',
+    // Configuração de E-mail (Exemplo com Ethereal. Para Gmail, use App Password)
+    emailUser: 'monitoramento@belfire.com', 
+    emailPass: 'senha123' 
+};
+
+// Configuração dos Times de Emergência
+const EMERGENCY_TEAMS = {
+    1: { name: "Operacional", target: "Supervisor Industrial e TST", msg: "ALERTA NÍVEL 1: Anomalia térmica detectada. Verificar in loco." },
+    2: { name: "Combate", target: "Equipe de Brigadistas", msg: "ALERTA NÍVEL 2: Princípio de incêndio. Brigada deslocar para o setor." },
+    3: { name: "Gestão", target: "Liderança Bahia Etanol", msg: "ALERTA NÍVEL 3: Incêndio em progresso. Risco operacional crítico." },
+    4: { name: "Externa", target: "Apoio Regional e Bombeiros (CBM)", msg: "ALERTA NÍVEL 4 (CRÍTICO): Solicitação de apoio externo. Evacuação." }
+};
+
+// Configuração do Transportador de E-mail
+const mailTransporter = nodemailer.createTransport({
+    host: "smtp.ethereal.email", 
+    port: 587,
+    secure: false, 
+    auth: {
+        user: 'maddison53@ethereal.email', 
+        pass: 'jn7jnAPss4f63QBp6D'
+    }
+});
+
+// Inicializa Bot Telegram (Opcional)
+let bot = null;
+if (CONFIG.telegramToken !== 'SEU_TELEGRAM_TOKEN_AQUI') {
+    bot = new Telegraf(CONFIG.telegramToken);
+    bot.launch().catch(err => console.error("Erro Telegram:", err));
 }
 
 // --- Logger de Auditoria ---
@@ -41,40 +84,13 @@ function logSystemAction(action, user, details) {
         details: details
     };
     memoryDb.systemLogs.unshift(log);
+    // Mantém os últimos 500 logs
     if (memoryDb.systemLogs.length > 500) memoryDb.systemLogs.pop();
-    persist(); // Salva no arquivo
+    persist();
     console.log(`[AUDIT] ${action}: ${details}`);
 }
 
-// --- Configurações ---
-const CONFIG = {
-    telegramToken: 'SEU_TELEGRAM_TOKEN_AQUI', 
-    telegramChatId: 'SEU_CHAT_ID_AQUI',
-    mqttBroker: 'mqtt://broker.hivemq.com',
-    // Configuração de E-mail (Exemplo com Ethereal para testes, ou Gmail)
-    emailUser: 'monitoramento@belfire.com', 
-    emailPass: 'senha123' 
-};
-
-// Configuração do Transportador de E-mail
-// Para testes reais, recomendamos usar uma Senha de App do Gmail ou Ethereal.email
-const mailTransporter = nodemailer.createTransport({
-    host: "smtp.ethereal.email", // Use 'smtp.gmail.com' para produção
-    port: 587,
-    secure: false, 
-    auth: {
-        user: 'maddison53@ethereal.email', // Troque por credenciais reais
-        pass: 'jn7jnAPss4f63QBp6D'
-    }
-});
-
-let bot = null;
-if (CONFIG.telegramToken !== 'SEU_TELEGRAM_TOKEN_AQUI') {
-    bot = new Telegraf(CONFIG.telegramToken);
-    bot.launch().catch(err => console.error("Erro Telegram:", err));
-}
-
-// --- Notificações ---
+// --- Sistema de Notificação Central ---
 async function notify(type, message) {
     const notification = {
         id: Date.now(),
@@ -86,15 +102,20 @@ async function notify(type, message) {
     if (memoryDb.notifications.length > 200) memoryDb.notifications.pop();
     persist();
 
+    // Envia Telegram se for crítico
     if (type === 'critical' || type === 'prediction') {
         logSystemAction('ALERT_TRIGGERED', 'Inteligência Artificial', message);
         if (bot) try { bot.telegram.sendMessage(CONFIG.telegramChatId, `🚨 ${message}`); } catch (e) {}
     }
 
+    // Notifica Frontend via WebSocket
     broadcast({ type: 'notification', alertType: type, message });
+    
+    // Dispara Webhooks
     triggerWebhooks(type, notification);
 }
 
+// Disparador de Webhooks
 async function triggerWebhooks(type, payload) {
     memoryDb.webhooks.forEach(async (hook) => {
         if (hook.events.includes(type) || hook.events.includes('all')) {
@@ -103,62 +124,41 @@ async function triggerWebhooks(type, payload) {
     });
 }
 
-// --- CRON JOBS: Relatórios Automáticos ---
-// Roda todos os dias às 08:00 da manhã
-cron.schedule('0 8 * * *', async () => {
-    console.log('📧 Iniciando envio de relatório diário...');
-    logSystemAction('EMAIL_REPORT', 'CronJob', 'Gerando relatório automático');
+// --- ROTAS DA API ---
 
-    // 1. Gera o CSV em memória
-    let csvContent = "SensorID,Timestamp,Data,Hora,Temperatura(C)\n";
-    Object.keys(memoryDb.sensorHistory).forEach(id => {
-        memoryDb.sensorHistory[id].forEach(r => {
-            const d = new Date(r.time);
-            csvContent += `${id},${d.toISOString()},${d.toLocaleDateString()},${d.toLocaleTimeString()},${r.val.toFixed(2)}\n`;
-        });
-    });
+// 1. Rota de Login (Autenticação)
+app.post('/api/v1/login', (req, res) => {
+    const { username, password } = req.body;
+    const user = USERS[username];
 
-    // 2. Envia o E-mail
-    try {
-        const info = await mailTransporter.sendMail({
-            from: '"BEL FIRE System" <sistema@belfire.com>',
-            to: "gerente@usina.com", // Defina o destinatário real aqui
-            subject: `📊 Relatório Diário - ${new Date().toLocaleDateString()}`,
-            text: "Segue em anexo o relatório consolidado das últimas 24h das pilhas de bagaço.",
-            attachments: [
-                {
-                    filename: `relatorio_${new Date().toISOString().split('T')[0]}.csv`,
-                    content: csvContent
-                }
-            ]
+    if (user && user.pass === password) {
+        logSystemAction('LOGIN_SUCCESS', user.name, 'Acesso realizado com sucesso');
+        res.json({ 
+            success: true, 
+            user: { name: user.name, role: user.role, username: username } 
         });
-        console.log("Message sent: %s", info.messageId);
-        logSystemAction('EMAIL_SENT', 'System', 'Relatório diário enviado com sucesso');
-    } catch (error) {
-        console.error("Erro ao enviar email:", error);
-        logSystemAction('EMAIL_ERROR', 'System', 'Falha no envio do relatório');
+    } else {
+        logSystemAction('LOGIN_FAILED', username || 'Anônimo', 'Tentativa de senha incorreta');
+        res.status(401).json({ success: false, message: 'Credenciais inválidas' });
     }
 });
 
-// --- INTELIGÊNCIA: Análise de Tendência (Delta T) ---
-function analyzeRisk(sensorId, currentTemp) {
-    const history = memoryDb.sensorHistory[sensorId];
-    if (!history || history.length < 5) return;
+// 2. Rota de Acionamento de Emergência (Protocolos)
+app.post('/api/v1/emergency/trigger', (req, res) => {
+    const { phase, user } = req.body;
+    const phaseInfo = EMERGENCY_TEAMS[phase];
 
-    const oldReading = history[history.length - 5]; 
-    const delta = currentTemp - oldReading.val;
+    if (!phaseInfo) return res.status(400).json({ error: "Fase inválida" });
 
-    if (delta > 3) {
-        const msg = `Predição de Risco: Sensor ${sensorId} subiu ${delta.toFixed(1)}°C rapidamente!`;
-        const lastAlert = memoryDb.notifications.find(n => n.message === msg && (Date.now() - n.id < 30000));
-        
-        if (!lastAlert) {
-            notify('prediction', msg);
-        }
-    }
-}
+    const alertMsg = `PROTOCOLOS: Fase ${phase} Iniciada (${phaseInfo.name}). Contatando: ${phaseInfo.target}`;
+    
+    logSystemAction(`EMERGENCY_PHASE_${phase}`, user || 'Operador', `Acionou equipe: ${phaseInfo.target}`);
+    notify('critical', alertMsg);
 
-// --- API: Monitoramento de Saúde ---
+    res.json({ success: true, message: `Fase ${phase} ativada.`, target: phaseInfo.target });
+});
+
+// 3. Monitoramento de Saúde do Servidor
 app.get('/api/v1/health', (req, res) => {
     const uptimeSeconds = (Date.now() - START_TIME) / 1000;
     const usedMem = os.totalmem() - os.freemem();
@@ -181,31 +181,74 @@ function formatUptime(seconds) {
     return `${d}d ${h}h ${m}m`;
 }
 
-// --- Rotas API ---
+// 4. Exportação de Relatório CSV
 app.get('/api/v1/export/csv', (req, res) => {
     logSystemAction('DATA_EXPORT', 'Usuario_Web', 'Exportou relatório CSV');
-    let csvContent = "SensorID,Timestamp,Temperatura(C)\n";
+    let csvContent = "SensorID,Timestamp,Data,Hora,Temperatura(C)\n";
     Object.keys(memoryDb.sensorHistory).forEach(id => {
         memoryDb.sensorHistory[id].forEach(r => {
-            csvContent += `${id},${new Date(r.time).toISOString()},${r.val.toFixed(2)}\n`;
+            const d = new Date(r.time);
+            csvContent += `${id},${d.toISOString()},${d.toLocaleDateString()},${d.toLocaleTimeString()},${r.val.toFixed(2)}\n`;
         });
     });
     res.header('Content-Type', 'text/csv').attachment('belfire_report.csv').send(csvContent);
 });
 
+// 5. Rotas de Logs e Webhooks
 app.get('/api/v1/logs', (req, res) => res.json(memoryDb.systemLogs));
-
 app.get('/api/v1/webhooks', (req, res) => res.json(memoryDb.webhooks));
 app.post('/api/v1/webhooks', (req, res) => {
     memoryDb.webhooks.push({ id: Date.now(), ...req.body });
-    persist(); // Salva
+    persist();
     res.json({ success: true });
 });
 app.delete('/api/v1/webhooks/:id', (req, res) => {
     memoryDb.webhooks = memoryDb.webhooks.filter(w => w.id !== parseInt(req.params.id));
-    persist(); // Salva
+    persist();
     res.json({ success: true });
 });
+
+// --- CRON JOBS (Relatórios Automáticos) ---
+// Roda todos os dias às 08:00
+cron.schedule('0 8 * * *', async () => {
+    console.log('📧 Iniciando envio de relatório diário...');
+    logSystemAction('EMAIL_REPORT', 'CronJob', 'Gerando relatório automático');
+
+    let csvContent = "SensorID,Timestamp,Val\n"; 
+    // (Lógica simplificada de geração CSV para o email)
+    Object.keys(memoryDb.sensorHistory).forEach(id => {
+        memoryDb.sensorHistory[id].forEach(r => { csvContent += `${id},${r.time},${r.val}\n`; });
+    });
+
+    try {
+        await mailTransporter.sendMail({
+            from: '"BEL FIRE System" <sistema@belfire.com>',
+            to: "gerente@usina.com",
+            subject: `📊 Relatório Diário - ${new Date().toLocaleDateString()}`,
+            text: "Segue relatório anexo.",
+            attachments: [{ filename: 'relatorio.csv', content: csvContent }]
+        });
+        logSystemAction('EMAIL_SENT', 'System', 'Relatório enviado');
+    } catch (error) {
+        logSystemAction('EMAIL_ERROR', 'System', 'Falha no envio');
+    }
+});
+
+// --- INTELIGÊNCIA: Análise de Tendência (Delta T) ---
+function analyzeRisk(sensorId, currentTemp) {
+    const history = memoryDb.sensorHistory[sensorId];
+    if (!history || history.length < 5) return;
+
+    const oldReading = history[history.length - 5]; 
+    const delta = currentTemp - oldReading.val;
+
+    if (delta > 3) {
+        const msg = `Predição de Risco: Sensor ${sensorId} subiu ${delta.toFixed(1)}°C rapidamente!`;
+        const lastAlert = memoryDb.notifications.find(n => n.message === msg && (Date.now() - n.id < 30000));
+        
+        if (!lastAlert) notify('prediction', msg);
+    }
+}
 
 // --- MQTT & WebSocket ---
 const sensorState = {};
@@ -215,21 +258,24 @@ function broadcast(data) {
 }
 
 const mqttClient = mqtt.connect(CONFIG.mqttBroker);
-mqttClient.on('connect', () => mqttClient.subscribe('usina/bagaco/sensor/#'));
+mqttClient.on('connect', () => {
+    console.log("📡 Conectado ao Broker MQTT");
+    mqttClient.subscribe('usina/bagaco/sensor/#');
+});
 
 mqttClient.on('message', (topic, message) => {
     try {
         let rawData;
         try { rawData = JSON.parse(message.toString()); } catch { rawData = { temp: parseFloat(message.toString()) }; }
         const sensorId = topic.split('/').pop();
-        const data = { temp: rawData.temp, humidity: rawData.humidity || 50, pressure: rawData.pressure || 1013 };
+        const data = { temp: rawData.temp, humidity: rawData.humidity || 50, pressure: rawData.pressure || 1013, alerta: rawData.temp > 85 ? 'critical' : 'normal', sprinkler: rawData.sprinkler || 'OFF' };
 
         if (!memoryDb.sensorHistory[sensorId]) memoryDb.sensorHistory[sensorId] = [];
         memoryDb.sensorHistory[sensorId].push({ time: Date.now(), val: data.temp });
         if (memoryDb.sensorHistory[sensorId].length > MAX_HISTORY) memoryDb.sensorHistory[sensorId].shift();
         
-        // Salva periodicamente o histórico (a cada 10 leituras para não pesar o disco)
-        if (memoryDb.sensorHistory[sensorId].length % 10 === 0) persist();
+        // Salva periodicamente
+        if (memoryDb.sensorHistory[sensorId].length % 20 === 0) persist();
 
         analyzeRisk(sensorId, data.temp);
 
@@ -240,18 +286,24 @@ mqttClient.on('message', (topic, message) => {
     } catch (e) {}
 });
 
-// Servidor Web
+// --- Servidor Web (Arquivos Estáticos) ---
 app.use(express.static(path.join(__dirname, '../public')));
-app.get('*', (req, res) => { if (!req.path.startsWith('/api')) res.sendFile(path.join(__dirname, '../public/index.html')); });
 
-// --- INICIALIZAÇÃO DO SERVIDOR ---
+// Redireciona tudo que não for API para o index (para lidar com SPA/PWA se necessário)
+app.get('*', (req, res) => {
+    if (!req.path.startsWith('/api')) res.sendFile(path.join(__dirname, '../public/index.html'));
+});
+
+// --- INICIALIZAÇÃO ---
 server.listen(3000, () => {
     console.log('🔥 BEL FIRE Enterprise rodando na porta 3000');
     console.log('💾 Sistema de Persistência: ATIVO');
+    console.log('🔒 Sistema de Autenticação: ATIVO');
     console.log('🌍 Abrindo navegador automaticamente...');
 
     const url = 'http://localhost:3000';
     const start = (process.platform == 'darwin' ? 'open' : process.platform == 'win32' ? 'start' : 'xdg-open');
+    
     exec(start + ' ' + url, (err) => {
         if(err) console.log('⚠️  Acesse manualmente: ' + url);
     });
