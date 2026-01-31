@@ -745,3 +745,35 @@ body {
 .alert-card, .stat-card, .sensor-card {
     animation: fadeIn 0.5s ease forwards;
 }
+
+/* Estados de Alerta Industrial */
+.sensor-card.normal { border-left: 5px solid var(--success-color); }
+.sensor-card.warning { 
+    border-left: 5px solid var(--warning-color);
+    animation: pulse-border-orange 2s infinite; 
+}
+.sensor-card.critical { 
+    border-left: 5px solid var(--danger-color);
+    background-color: rgba(239, 68, 68, 0.1);
+    animation: pulse-red-bg 1s infinite;
+}
+
+.sensor-type {
+    font-size: 10px;
+    background: var(--bg-tertiary);
+    padding: 2px 6px;
+    border-radius: 4px;
+    color: var(--text-muted);
+}
+
+@keyframes pulse-red-bg {
+    0% { background-color: rgba(239, 68, 68, 0.1); }
+    50% { background-color: rgba(239, 68, 68, 0.3); }
+    100% { background-color: rgba(239, 68, 68, 0.1); }
+}
+
+@keyframes pulse-border-orange {
+    0% { border-left-color: var(--warning-color); }
+    50% { border-left-color: transparent; }
+    100% { border-left-color: var(--warning-color); }
+}
