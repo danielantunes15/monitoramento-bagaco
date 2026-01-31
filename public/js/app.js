@@ -1,81 +1,123 @@
+/**
+ * BEL FIRE - Aplicação Principal
+ * Coordena a recepção de dados via WebSocket e atualiza a interface.
+ */
 class TemperatureMonitor {
     constructor() {
+        // Inicializa a conexão WebSocket com o servidor
         this.socket = new WebSocket(`ws://${window.location.host}`);
+        
+        // Instancia o sistema de alertas (deve estar no arquivo alerts.js)
+        this.alertSystem = typeof AlertSystem !== 'undefined' ? new AlertSystem() : null;
+        
         this.sensors = {};
         this.init();
     }
 
     init() {
+        // Solicita permissão para notificações push se o sistema de alertas existir
+        if (this.alertSystem) {
+            this.alertSystem.requestPermission();
+        }
+
         this.setupWebSocket();
         this.updateTime();
+        
+        // Atualiza o relógio da interface a cada segundo
         setInterval(() => this.updateTime(), 1000);
     }
 
+    /**
+     * Configura os ouvintes de eventos do WebSocket
+     */
     setupWebSocket() {
         this.socket.onmessage = (event) => {
-            const msg = JSON.parse(event.data);
-            if (msg.type === 'sensor_update') {
-                this.handleSensorData(msg);
+            try {
+                const msg = JSON.parse(event.data);
+                
+                // Trata notificações de sistema (Push e Sirene)
+                if (msg.type === 'notification') {
+                    this.handleGlobalNotification(msg);
+                }
+
+                // Trata atualizações de dados dos sensores
+                if (msg.type === 'sensor_update') {
+                    this.updateSensorUI(msg);
+                }
+            } catch (error) {
+                console.error("Erro ao processar mensagem do servidor:", error);
             }
+        };
+
+        this.socket.onclose = () => {
+            console.warn("Conexão com o servidor BEL FIRE perdida. Tentando reconectar...");
+            document.getElementById('status-text').textContent = "Desconectado";
+            document.getElementById('status-indicator').className = "status-dot inactive";
         };
     }
 
-    handleSensorData(data) {
-        // Atualiza ou cria o card do sensor
+    /**
+     * Gerencia alertas globais enviados pelo backend
+     */
+    handleGlobalNotification(msg) {
+        if (this.alertSystem) {
+            this.alertSystem.showPush(msg.message);
+            
+            // Ativa a sirene virtual apenas para alertas críticos
+            if (msg.alertType === 'critical') {
+                this.alertSystem.playSiren();
+            }
+        }
+        
+        // Atualiza o banner de alerta na interface, se disponível
+        const alertBanner = document.getElementById('alert-message');
+        if (alertBanner) {
+            alertBanner.textContent = msg.message;
+        }
+    }
+
+    /**
+     * Atualiza os elementos visuais dos sensores no Dashboard
+     */
+    updateSensorUI(data) {
         const sensorKey = `sensor-${data.sensorId}`;
-        let sensorElem = document.getElementById(sensorKey);
+        const tempDisplay = document.getElementById(`${sensorKey}-temp`);
+        const sensorCard = document.querySelector(`[data-sensor="${data.sensorId}"]`);
 
-        if (!sensorElem) {
-            sensorElem = this.createSensorCard(data);
-            document.querySelector('.sensors-grid').appendChild(sensorElem);
+        if (tempDisplay) {
+            tempDisplay.textContent = `${data.temp.toFixed(1)}°C`;
         }
 
-        this.updateSensorUI(sensorElem, data);
-    }
-
-    createSensorCard(data) {
-        const div = document.createElement('div');
-        div.id = `sensor-${data.sensorId}`;
-        div.className = 'sensor-card';
-        // Diferenciação visual baseada no tipo
-        const icon = data.type_sensor === 'superficie' ? 'fa-video' : 'fa-probe';
-        
-        div.innerHTML = `
-            <div class="sensor-header">
-                <span class="sensor-id"><i class="fas ${icon}"></i> #${data.sensorId}</span>
-                <span class="sensor-type">${data.type_sensor.toUpperCase()}</span>
-            </div>
-            <div class="temp-value">--°C</div>
-            <div class="sensor-trend"></div>
-            <div class="sensor-location">Pilha de Bagaço</div>
-        `;
-        return div;
-    }
-
-    updateSensorUI(elem, data) {
-        const tempDisplay = elem.querySelector('.temp-value');
-        const trendDisplay = elem.querySelector('.sensor-trend');
-
-        tempDisplay.textContent = `${data.temp.toFixed(1)}°C`;
-        
-        // Aplica cores baseadas no status validado pelo servidor
-        elem.className = `sensor-card ${data.status}`;
-
-        // Alerta de subida rápida
-        if (data.isRisingFast) {
-            trendDisplay.innerHTML = `<i class="fas fa-arrow-up"></i> Aquecimento Rápido`;
-            trendDisplay.style.color = 'var(--danger-color)';
-        } else {
-            trendDisplay.innerHTML = '';
+        if (sensorCard) {
+            // Aplica as classes CSS de status (normal, warning, critical)
+            // As animações são controladas pelo style.css
+            sensorCard.className = `sensor-card ${data.status}`;
+            
+            // Exibe indicador de subida rápida se detectado pelo backend
+            const trendLabel = sensorCard.querySelector('.temp-label');
+            if (data.isRisingFast) {
+                trendLabel.innerHTML = `<i class="fas fa-arrow-up"></i> Aquecimento Rápido`;
+                trendLabel.style.color = "var(--danger-color)";
+            } else {
+                trendLabel.textContent = "Temperatura";
+                trendLabel.style.color = "";
+            }
         }
     }
 
+    /**
+     * Atualiza o relógio global da interface
+     */
     updateTime() {
         const now = new Date();
-        document.getElementById('current-time').textContent = now.toLocaleTimeString('pt-BR');
+        const timeElement = document.getElementById('current-time');
+        if (timeElement) {
+            timeElement.textContent = now.toLocaleTimeString('pt-BR');
+        }
     }
 }
 
+// Inicializa o sistema BEL FIRE ao carregar o DOM
 document.addEventListener('DOMContentLoaded', () => {
     window.monitor = new TemperatureMonitor();
 });
