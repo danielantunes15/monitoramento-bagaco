@@ -9,8 +9,8 @@ const cron = require('node-cron');
 const cors = require('cors');
 const axios = require('axios');
 const os = require('os');
-const { exec } = require('child_process'); // Para abrir o navegador
-const { loadData, saveData } = require('./utils/fileStorage'); // Persistência
+const { exec } = require('child_process'); 
+const supabase = require('./utils/supabaseClient'); // Importação do Supabase
 
 // --- Configuração do Servidor ---
 const app = express();
@@ -20,28 +20,10 @@ const wss = new WebSocket.Server({ server });
 app.use(cors());
 app.use(express.json());
 
-// --- Carrega Dados Persistidos (Não perde nada ao reiniciar) ---
-console.log('📂 Carregando base de dados local...');
-let memoryDb = loadData();
-
-// --- INICIALIZAÇÃO SEGURA DA BASE DE DADOS ---
-// Garante que as listas existam para evitar erros de "undefined"
-if (!memoryDb.cameras) memoryDb.cameras = [];
-if (!memoryDb.sensors) memoryDb.sensors = [];
-if (!memoryDb.webhooks) memoryDb.webhooks = [];
-if (!memoryDb.systemLogs) memoryDb.systemLogs = [];
-if (!memoryDb.notifications) memoryDb.notifications = [];
-if (!memoryDb.sensorHistory) memoryDb.sensorHistory = {};
-
-const MAX_HISTORY = 1000;
 const START_TIME = Date.now();
+const MAX_HISTORY = 1000;
 
-// Função auxiliar para salvar
-function persist() {
-    saveData(memoryDb);
-}
-
-// --- CONTROLE DE ACESSO (Usuários) ---
+// --- CONTROLE DE ACESSO (Usuários Estáticos) ---
 const USERS = {
     'admin': { pass: 'admin123', name: 'Administrador', role: 'admin' },
     'operador': { pass: 'operador123', name: 'Operador de Turno', role: 'operator' },
@@ -53,7 +35,6 @@ const CONFIG = {
     telegramToken: 'SEU_TELEGRAM_TOKEN_AQUI', 
     telegramChatId: 'SEU_CHAT_ID_AQUI',
     mqttBroker: 'mqtt://broker.hivemq.com',
-    // Configuração de E-mail (Exemplo com Ethereal. Para Gmail, use App Password)
     emailUser: 'monitoramento@belfire.com', 
     emailPass: 'senha123' 
 };
@@ -72,7 +53,7 @@ const mailTransporter = nodemailer.createTransport({
     port: 587,
     secure: false, 
     auth: {
-        user: 'maddison53@ethereal.email', 
+        user: 'maddison53@ethereal.email', // Substitua pelos seus dados reais se necessário
         pass: 'jn7jnAPss4f63QBp6D'
     }
 });
@@ -83,81 +64,78 @@ if (CONFIG.telegramToken !== 'SEU_TELEGRAM_TOKEN_AQUI') {
     try {
         bot = new Telegraf(CONFIG.telegramToken);
         bot.launch().catch(err => console.error("Erro Telegram:", err));
-    } catch (e) {
-        console.log("Telegram não configurado.");
-    }
+    } catch (e) { console.log("Telegram não configurado."); }
 }
 
-// --- Logger de Auditoria ---
-function logSystemAction(action, user, details) {
-    const log = {
-        id: Date.now(),
-        timestamp: new Date(),
-        action: action,
-        user: user || 'Sistema',
-        details: details
-    };
-    memoryDb.systemLogs.unshift(log);
-    // Mantém os últimos 500 logs
-    if (memoryDb.systemLogs.length > 500) memoryDb.systemLogs.pop();
-    persist();
-    console.log(`[AUDIT] ${action}: ${details}`);
+// --- FUNÇÕES AUXILIARES COM SUPABASE ---
+
+// 1. Logger de Auditoria
+async function logSystemAction(action, user, details) {
+    try {
+        await supabase.from('system_logs').insert([{
+            action,
+            user: user || 'Sistema',
+            details: details,
+            timestamp: new Date()
+        }]);
+        console.log(`[AUDIT] ${action}: ${details}`);
+    } catch (e) { console.error("Erro ao salvar log:", e); }
 }
 
-// --- Sistema de Notificação Central ---
+// 2. Sistema de Notificação
 async function notify(type, message) {
-    const notification = {
-        id: Date.now(),
-        type,
-        message,
-        timestamp: new Date().toISOString()
-    };
-    memoryDb.notifications.unshift(notification);
-    if (memoryDb.notifications.length > 200) memoryDb.notifications.pop();
-    persist();
+    try {
+        // Salva notificação
+        const { data: notification } = await supabase.from('notifications').insert([{ 
+            type, 
+            message, 
+            timestamp: new Date().toISOString() 
+        }]).select().single();
 
-    // Envia Telegram se for crítico
-    if (type === 'critical' || type === 'prediction') {
-        logSystemAction('ALERT_TRIGGERED', 'Inteligência Artificial', message);
-        if (bot) try { bot.telegram.sendMessage(CONFIG.telegramChatId, `🚨 ${message}`); } catch (e) {}
-    }
+        // Envia Telegram se for crítico
+        if (type === 'critical' || type === 'prediction') {
+            logSystemAction('ALERT_TRIGGERED', 'Inteligência Artificial', message);
+            if (bot) try { bot.telegram.sendMessage(CONFIG.telegramChatId, `🚨 ${message}`); } catch (e) {}
+        }
 
-    // Notifica Frontend via WebSocket
-    broadcast({ type: 'notification', alertType: type, message });
-    
-    // Dispara Webhooks
-    triggerWebhooks(type, notification);
+        // WebSocket e Webhooks
+        broadcast({ type: 'notification', alertType: type, message });
+        triggerWebhooks(type, { ...notification, system: 'BEL FIRE AI' });
+    } catch (e) { console.error("Erro notificação:", e); }
 }
 
-// Disparador de Webhooks
+// 3. Webhooks
 async function triggerWebhooks(type, payload) {
-    memoryDb.webhooks.forEach(async (hook) => {
-        if (hook.events.includes(type) || hook.events.includes('all')) {
-            try { await axios.post(hook.url, { ...payload, system: 'BEL FIRE AI' }); } catch (e) {}
-        }
-    });
+    const { data: webhooks } = await supabase.from('webhooks').select('*');
+    if(webhooks) {
+        webhooks.forEach(async (hook) => {
+            // Verifica se o evento 'all' ou o tipo específico está na lista de eventos
+            // Assumindo que 'events' é um array JSONB no Supabase
+            const events = Array.isArray(hook.events) ? hook.events : JSON.parse(hook.events || '[]');
+            if (events.includes(type) || events.includes('all')) {
+                try { await axios.post(hook.url, payload); } catch (e) {}
+            }
+        });
+    }
 }
 
 // --- ROTAS DA API ---
 
-// 1. Rota de Login (Autenticação)
+// Login
 app.post('/api/v1/login', (req, res) => {
     const { username, password } = req.body;
     const user = USERS[username];
 
     if (user && user.pass === password) {
         logSystemAction('LOGIN_SUCCESS', user.name, 'Acesso realizado com sucesso');
-        res.json({ 
-            success: true, 
-            user: { name: user.name, role: user.role, username: username } 
-        });
+        res.json({ success: true, user: { name: user.name, role: user.role, username: username } });
     } else {
         logSystemAction('LOGIN_FAILED', username || 'Anônimo', 'Tentativa de senha incorreta');
         res.status(401).json({ success: false, message: 'Credenciais inválidas' });
     }
 });
 
-// 2. Rota de Acionamento de Emergência (Protocolos)
+// Acionamento de Emergência
 app.post('/api/v1/emergency/trigger', (req, res) => {
     const { phase, user } = req.body;
     const phaseInfo = EMERGENCY_TEAMS[phase];
@@ -172,7 +150,7 @@ app.post('/api/v1/emergency/trigger', (req, res) => {
     res.json({ success: true, message: `Fase ${phase} ativada.`, target: phaseInfo.target });
 });
 
-// 3. Monitoramento de Saúde do Servidor
+// Saúde do Servidor
 app.get('/api/v1/health', (req, res) => {
     const uptimeSeconds = (Date.now() - START_TIME) / 1000;
     const usedMem = os.totalmem() - os.freemem();
@@ -184,7 +162,7 @@ app.get('/api/v1/health', (req, res) => {
         memory_usage: `${memPercentage.toFixed(1)}%`,
         active_connections: wss.clients.size,
         mqtt_status: mqttClient.connected ? 'Conectado' : 'Desconectado',
-        database_type: 'JSON Persistence (Local)'
+        database_type: 'Supabase (Cloud)'
     });
 });
 
@@ -195,86 +173,111 @@ function formatUptime(seconds) {
     return `${d}d ${h}h ${m}m`;
 }
 
-// 4. Exportação de Relatório CSV
-app.get('/api/v1/export/csv', (req, res) => {
+// Exportação CSV (Lendo do Supabase)
+app.get('/api/v1/export/csv', async (req, res) => {
     logSystemAction('DATA_EXPORT', 'Usuario_Web', 'Exportou relatório CSV');
+    
+    // Busca últimos 1000 registros
+    const { data: history } = await supabase
+        .from('sensor_history')
+        .select('*')
+        .order('timestamp', { ascending: false })
+        .limit(1000);
+
     let csvContent = "SensorID,Timestamp,Data,Hora,Temperatura(C)\n";
-    if (memoryDb.sensorHistory) {
-        Object.keys(memoryDb.sensorHistory).forEach(id => {
-            memoryDb.sensorHistory[id].forEach(r => {
-                const d = new Date(r.time);
-                csvContent += `${id},${d.toISOString()},${d.toLocaleDateString()},${d.toLocaleTimeString()},${r.val.toFixed(2)}\n`;
-            });
+    if (history) {
+        history.forEach(r => {
+            const d = new Date(r.timestamp);
+            csvContent += `${r.sensor_id},${d.toISOString()},${d.toLocaleDateString()},${d.toLocaleTimeString()},${r.val}\n`;
         });
     }
     res.header('Content-Type', 'text/csv').attachment('belfire_report.csv').send(csvContent);
 });
 
-// 5. Rotas de Logs e Webhooks
-app.get('/api/v1/logs', (req, res) => res.json(memoryDb.systemLogs));
-app.get('/api/v1/webhooks', (req, res) => res.json(memoryDb.webhooks));
-app.post('/api/v1/webhooks', (req, res) => {
-    const webhook = { id: Date.now(), ...req.body };
-    memoryDb.webhooks.push(webhook);
-    persist();
-    res.json({ success: true });
-});
-app.delete('/api/v1/webhooks/:id', (req, res) => {
-    const id = parseInt(req.params.id);
-    memoryDb.webhooks = memoryDb.webhooks.filter(w => w.id !== id);
-    persist();
-    res.json({ success: true });
+// Logs e Webhooks
+app.get('/api/v1/logs', async (req, res) => {
+    const { data } = await supabase.from('system_logs').select('*').order('timestamp', { ascending: false }).limit(100);
+    res.json(data || []);
 });
 
-// === [NOVO] GERENCIAMENTO DE CÂMERAS ===
-app.get('/api/v1/cameras', (req, res) => res.json(memoryDb.cameras || []));
-
-app.post('/api/v1/cameras', (req, res) => {
-    const newCam = { 
-        id: Date.now(), 
-        ...req.body, 
-        status: 'active' 
-    };
-    memoryDb.cameras.push(newCam);
-    persist();
-    res.json({ success: true, camera: newCam });
+app.get('/api/v1/webhooks', async (req, res) => {
+    const { data } = await supabase.from('webhooks').select('*');
+    res.json(data || []);
 });
 
-app.delete('/api/v1/cameras/:id', (req, res) => {
-    const id = parseInt(req.params.id);
-    memoryDb.cameras = memoryDb.cameras.filter(c => c.id !== id);
-    persist();
+app.post('/api/v1/webhooks', async (req, res) => {
+    await supabase.from('webhooks').insert([req.body]);
     res.json({ success: true });
 });
 
-// === [NOVO] GERENCIAMENTO DE SENSORES ===
-app.get('/api/v1/sensors', (req, res) => res.json(memoryDb.sensors || []));
-
-app.post('/api/v1/sensors', (req, res) => {
-    const newSensor = { id: Date.now(), ...req.body };
-    memoryDb.sensors.push(newSensor);
-    persist();
-    res.json({ success: true, sensor: newSensor });
-});
-
-app.delete('/api/v1/sensors/:id', (req, res) => {
-    const id = parseInt(req.params.id);
-    memoryDb.sensors = memoryDb.sensors.filter(s => s.id !== id);
-    persist();
+app.delete('/api/v1/webhooks/:id', async (req, res) => {
+    await supabase.from('webhooks').delete().eq('id', req.params.id);
     res.json({ success: true });
 });
 
-// --- CRON JOBS (Relatórios Automáticos) ---
-// Roda todos os dias às 08:00
+// Câmeras
+app.get('/api/v1/cameras', async (req, res) => {
+    const { data } = await supabase.from('cameras').select('*');
+    res.json(data || []);
+});
+
+app.post('/api/v1/cameras', async (req, res) => {
+    await supabase.from('cameras').insert([{ ...req.body, status: 'active' }]);
+    res.json({ success: true });
+});
+
+app.delete('/api/v1/cameras/:id', async (req, res) => {
+    await supabase.from('cameras').delete().eq('id', req.params.id);
+    res.json({ success: true });
+});
+
+// Sensores
+app.get('/api/v1/sensors', async (req, res) => {
+    const { data } = await supabase.from('sensors').select('*');
+    res.json(data || []);
+});
+
+app.post('/api/v1/sensors', async (req, res) => {
+    await supabase.from('sensors').insert([req.body]);
+    res.json({ success: true });
+});
+
+app.delete('/api/v1/sensors/:id', async (req, res) => {
+    await supabase.from('sensors').delete().eq('id', req.params.id);
+    res.json({ success: true });
+});
+
+// --- NOVO: Configuração do Digital Twin (Pilha e Hidrantes) ---
+app.get('/api/v1/config/layout', async (req, res) => {
+    const { data } = await supabase.from('digital_twin_config').select('*').eq('id', 'main_layout').single();
+    res.json(data || {});
+});
+
+app.post('/api/v1/config/layout', async (req, res) => {
+    const { pile_position, hydrants } = req.body;
+    const { error } = await supabase.from('digital_twin_config').upsert({ 
+        id: 'main_layout', 
+        pile_position, 
+        hydrants,
+        updated_at: new Date()
+    });
+    if (error) return res.status(500).json(error);
+    res.json({ success: true });
+});
+
+// --- CRON JOBS (Relatório Diário) ---
 cron.schedule('0 8 * * *', async () => {
     console.log('📧 Iniciando envio de relatório diário...');
     logSystemAction('EMAIL_REPORT', 'CronJob', 'Gerando relatório automático');
 
+    // Busca dados recentes
+    const { data: history } = await supabase.from('sensor_history')
+        .select('*')
+        .gt('timestamp', new Date(Date.now() - 86400000).toISOString()); // Últimas 24h
+
     let csvContent = "SensorID,Timestamp,Val\n"; 
-    if (memoryDb.sensorHistory) {
-        Object.keys(memoryDb.sensorHistory).forEach(id => {
-            memoryDb.sensorHistory[id].forEach(r => { csvContent += `${id},${r.time},${r.val}\n`; });
-        });
+    if (history) {
+        history.forEach(r => { csvContent += `${r.sensor_id},${r.timestamp},${r.val}\n`; });
     }
 
     try {
@@ -282,30 +285,41 @@ cron.schedule('0 8 * * *', async () => {
             from: '"BEL FIRE System" <sistema@belfire.com>',
             to: "gerente@usina.com",
             subject: `📊 Relatório Diário - ${new Date().toLocaleDateString()}`,
-            text: "Segue relatório anexo.",
+            text: "Segue relatório anexo das últimas 24h.",
             attachments: [{ filename: 'relatorio.csv', content: csvContent }]
         });
         logSystemAction('EMAIL_SENT', 'System', 'Relatório enviado');
     } catch (error) {
+        console.error(error);
         logSystemAction('EMAIL_ERROR', 'System', 'Falha no envio');
     }
 });
 
-// --- INTELIGÊNCIA: Análise de Tendência (Delta T) ---
-function analyzeRisk(sensorId, currentTemp) {
-    if (!memoryDb.sensorHistory) return;
-    const history = memoryDb.sensorHistory[sensorId];
+// --- INTELIGÊNCIA: Análise de Tendência ---
+async function analyzeRisk(sensorId, currentTemp) {
+    // Busca últimos 5 registros desse sensor
+    const { data: history } = await supabase
+        .from('sensor_history')
+        .select('val')
+        .eq('sensor_id', sensorId)
+        .order('timestamp', { ascending: false })
+        .limit(5);
+
     if (!history || history.length < 5) return;
 
-    const oldReading = history[history.length - 5]; 
-    const delta = currentTemp - oldReading.val;
+    const oldReading = history[4].val; // O mais antigo dos 5
+    const delta = currentTemp - oldReading;
 
     if (delta > 3) {
         const msg = `Predição de Risco: Sensor ${sensorId} subiu ${delta.toFixed(1)}°C rapidamente!`;
-        // Evita flood de alertas iguais
-        const lastAlert = memoryDb.notifications.find(n => n.message === msg && (Date.now() - n.id < 30000));
+        // Verifica se já não mandamos esse alerta recentemente
+        const { data: recentAlerts } = await supabase
+            .from('notifications')
+            .select('*')
+            .eq('message', msg)
+            .gt('timestamp', new Date(Date.now() - 30000).toISOString());
         
-        if (!lastAlert) notify('prediction', msg);
+        if (!recentAlerts || recentAlerts.length === 0) notify('prediction', msg);
     }
 }
 
@@ -322,33 +336,34 @@ mqttClient.on('connect', () => {
     mqttClient.subscribe('usina/bagaco/sensor/#');
 });
 
-mqttClient.on('message', (topic, message) => {
+mqttClient.on('message', async (topic, message) => {
     try {
         let rawData;
         try { rawData = JSON.parse(message.toString()); } catch { rawData = { temp: parseFloat(message.toString()) }; }
         const sensorId = topic.split('/').pop();
-        const data = { temp: rawData.temp, humidity: rawData.humidity || 50, pressure: rawData.pressure || 1013, alerta: rawData.temp > 85 ? 'critical' : 'normal', sprinkler: rawData.sprinkler || 'OFF' };
+        const data = { temp: rawData.temp, humidity: rawData.humidity || 50, pressure: rawData.pressure || 1013, alerta: rawData.temp > 85 ? 'critical' : 'normal' };
 
-        if (!memoryDb.sensorHistory[sensorId]) memoryDb.sensorHistory[sensorId] = [];
-        memoryDb.sensorHistory[sensorId].push({ time: Date.now(), val: data.temp });
-        if (memoryDb.sensorHistory[sensorId].length > MAX_HISTORY) memoryDb.sensorHistory[sensorId].shift();
-        
-        // Salva periodicamente
-        if (memoryDb.sensorHistory[sensorId].length % 20 === 0) persist();
+        // 1. Salva no Supabase
+        await supabase.from('sensor_history').insert([{ 
+            sensor_id: sensorId, 
+            val: data.temp,
+            timestamp: new Date().toISOString()
+        }]);
 
+        // 2. Análise
         analyzeRisk(sensorId, data.temp);
-
         if (data.temp > 85) notify('critical', `Fogo no Sensor ${sensorId}`);
 
+        // 3. Atualiza Frontend
         sensorState[sensorId] = { ...data, lastUpdate: Date.now() };
         broadcast({ type: 'sensor_update', sensorId, data: sensorState[sensorId] });
-    } catch (e) {}
+    } catch (e) { console.error("Erro MQTT:", e); }
 });
 
 // --- Servidor Web (Arquivos Estáticos) ---
 app.use(express.static(path.join(__dirname, '../public')));
 
-// Redireciona tudo que não for API para o index (para lidar com SPA/PWA se necessário)
+// Redireciona tudo que não for API para o index
 app.get('*', (req, res) => {
     if (!req.path.startsWith('/api')) res.sendFile(path.join(__dirname, '../public/index.html'));
 });
@@ -356,8 +371,7 @@ app.get('*', (req, res) => {
 // --- INICIALIZAÇÃO ---
 server.listen(3000, () => {
     console.log('🔥 BEL FIRE Enterprise rodando na porta 3000');
-    console.log('💾 Sistema de Persistência: ATIVO');
-    console.log('🔒 Sistema de Autenticação: ATIVO');
+    console.log('☁️  Sistema conectado ao Supabase');
     console.log('🌍 Abrindo navegador automaticamente...');
 
     const url = 'http://localhost:3000';
