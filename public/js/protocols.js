@@ -26,9 +26,9 @@ class ProtocolSystem {
 
         // Links padrão (exemplo)
         this.links = {
-            'link-sup': '101', 'link-tst': '102',
-            'link-brigada-lider': '201', 'link-brigada-team': '200',
-            'link-dir': '300', 'link-lid': '301', 'link-ssma': '302',
+            'link-sup': '8118', 'link-tst': '8118',
+            'link-brigada-lider': '8118', 'link-brigada-team': '8118',
+            'link-dir': '8118', 'link-lid': '8118', 'link-ssma': '8118',
             'link-cbm': '193', 'link-pam': '0800-PAM'
         };
 
