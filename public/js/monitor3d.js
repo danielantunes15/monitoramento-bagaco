@@ -1,6 +1,6 @@
 /**
  * BEL FIRE - Digital Twin 3D Engine
- * Utiliza Three.js para renderizar a planta e os alertas
+ * Versão Integrada: Recebe dados reais do app.js
  */
 
 class DigitalTwin {
@@ -10,228 +10,237 @@ class DigitalTwin {
         this.camera = null;
         this.renderer = null;
         this.controls = null;
-        this.objects = []; // Armazena referências para hidrantes/bombas
-        this.alertMarkers = []; // Armazena marcadores de fogo ativos
+        this.objects = []; 
+        this.activeAlerts = {}; // Dicionário para rastrear alertas ativos por ID
         
-        // Configurações da Planta
-        this.plantImage = 'assets/3.png'; // Caminho da sua imagem
-        this.plantWidth = 200; // Tamanho arbitrário no mundo 3D (proporcional)
-        this.plantHeight = 150; // Ajustaremos dinamicamente ao carregar a imagem
+        this.plantImage = './assets/3.png'; 
+        this.plantWidth = 200; 
         
+        // Mapeamento: Onde fica cada sensor no mapa 3D?
+        // Você pode ajustar o X e Z para bater com a posição real na planta
+        this.sensorLocations = {
+            '1': { x: 20, z: 20, label: "Setor A" },
+            '2': { x: 60, z: -40, label: "Setor B" },
+            '3': { x: -40, z: 40, label: "Caldeira" }
+        };
+
         this.init();
+        
+        // Expõe função global para o app.js chamar quando chegar dados
+        window.update3DAlert = (id, temp, status) => this.handleRealData(id, temp, status);
     }
 
     init() {
-        // 1. Cena
+        // --- 1. Cena e Câmera ---
         this.scene = new THREE.Scene();
-        // Adiciona neblina para dar profundidade e esconder bordas abruptas
-        this.scene.fog = new THREE.FogExp2(0x111111, 0.002);
+        this.scene.fog = new THREE.FogExp2(0x111111, 0.001); 
 
-        // 2. Câmera
         this.camera = new THREE.PerspectiveCamera(60, this.container.clientWidth / this.container.clientHeight, 0.1, 1000);
-        this.camera.position.set(0, 150, 150); // Posição inicial elevada
+        this.camera.position.set(0, 100, 100); 
         this.camera.lookAt(0, 0, 0);
 
-        // 3. Renderizador
+        // --- 2. Renderizador ---
         this.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
         this.renderer.setSize(this.container.clientWidth, this.container.clientHeight);
         this.renderer.shadowMap.enabled = true;
+        this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
         this.container.appendChild(this.renderer.domElement);
 
-        // 4. Controles (OrbitControls)
+        // --- 3. Controles ---
         this.controls = new THREE.OrbitControls(this.camera, this.renderer.domElement);
         this.controls.enableDamping = true;
         this.controls.dampingFactor = 0.05;
-        this.controls.maxPolarAngle = Math.PI / 2 - 0.1; // Impede a câmera de ir para baixo do chão
-        this.controls.minDistance = 20;
-        this.controls.maxDistance = 400;
+        this.controls.maxPolarAngle = Math.PI / 2 - 0.05;
+        this.controls.minDistance = 10;
+        this.controls.maxDistance = 500;
 
-        // 5. Luzes
+        // --- 4. Luzes ---
         const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
         this.scene.add(ambientLight);
 
         const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
         dirLight.position.set(50, 100, 50);
         dirLight.castShadow = true;
+        dirLight.shadow.mapSize.width = 2048;
+        dirLight.shadow.mapSize.height = 2048;
         this.scene.add(dirLight);
 
-        // 6. Carregar o Chão (Planta)
+        // --- 5. Carregar Mapa ---
         this.loadPlantFloor();
 
-        // 7. Iniciar Loop
+        // --- 6. Objetos Estáticos ---
+        this.addPumpHouse(-50, -30, "Casa de Bombas");
+        
+        // Hidrantes (Posições correspondentes aos sensores para exemplo)
+        this.addHydrant(20, 20);   // Perto do Sensor 1
+        this.addHydrant(60, -40);  // Perto do Sensor 2
+        this.addHydrant(-40, 40);  // Perto do Sensor 3
+
+        // --- 7. Loop ---
         this.animate();
 
-        // 8. Eventos de Janela
-        window.addEventListener('resize', () => this.onWindowResize());
-        
-        // 9. Configurar Botões da Interface
-        document.getElementById('btn-reset-view').addEventListener('click', () => {
-            this.camera.position.set(0, 150, 150);
-            this.controls.target.set(0,0,0);
+        window.addEventListener('resize', () => {
+            this.camera.aspect = this.container.clientWidth / this.container.clientHeight;
+            this.camera.updateProjectionMatrix();
+            this.renderer.setSize(this.container.clientWidth, this.container.clientHeight);
         });
 
-        // --- SIMULAÇÃO: Adicionar Objetos Iniciais ---
-        // Aqui você pode mudar as posições X, Z conforme sua planta real
-        this.addPumpHouse(-50, -30, "Casa de Bombas Principal");
-        this.addHydrant(20, 20, "H-01");
-        this.addHydrant(60, -40, "H-02");
-        this.addHydrant(-40, 40, "H-03");
+        // Botão Reset
+        const btnReset = document.getElementById('btn-reset-view');
+        if(btnReset) btnReset.addEventListener('click', () => {
+            this.camera.position.set(0, 100, 100);
+            this.controls.target.set(0,0,0);
+        });
+    }
 
-        // --- EXIBIR ALERTA DE TESTE (Para você ver funcionando offline) ---
-        // Simula um alerta de incêndio após 3 segundos
-        setTimeout(() => {
-            this.triggerFireAlert(20, 20, "Setor Produção - H-01");
-        }, 3000);
+    // Recebe dados REAIS do app.js
+    handleRealData(sensorId, temp, status) {
+        const location = this.sensorLocations[sensorId];
+        
+        // Se não tivermos esse sensor mapeado no 3D, ignoramos
+        if (!location) return;
+
+        // Lógica de Alerta
+        // Se for crítico E ainda não tiver alerta ativo para esse sensor
+        if ((status === 'critical' || temp > 80) && !this.activeAlerts[sensorId]) {
+            console.log(`🔥 FOGO detectado no Sensor ${sensorId} (${temp}°C)`);
+            this.createFireEffect(sensorId, location.x, location.z, temp);
+        } 
+        // Se voltou ao normal e tinha alerta, remove o fogo
+        else if (status !== 'critical' && temp <= 80 && this.activeAlerts[sensorId]) {
+            console.log(`✅ Sensor ${sensorId} normalizado.`);
+            this.removeFireEffect(sensorId);
+        }
+    }
+
+    createFireEffect(id, x, z, temp) {
+        // 1. Visual do Fogo (Esfera Pulsante)
+        const geometry = new THREE.SphereGeometry(4, 32, 32); // Tamanho do fogo
+        const material = new THREE.MeshBasicMaterial({ 
+            color: 0xff3300, 
+            transparent: true, 
+            opacity: 0.7 
+        });
+        const fireMesh = new THREE.Mesh(geometry, material);
+        fireMesh.position.set(x, 2, z);
+
+        // 2. Luz do Fogo
+        const fireLight = new THREE.PointLight(0xff4500, 3, 40);
+        fireLight.position.set(x, 5, z);
+
+        this.scene.add(fireMesh);
+        this.scene.add(fireLight);
+
+        // Guarda referências para poder remover depois
+        this.activeAlerts[id] = { mesh: fireMesh, light: fireLight };
+
+        // Atualiza UI HTML
+        const banner = document.getElementById('alert-banner-3d');
+        const locText = document.getElementById('alert-location-text');
+        if (banner) {
+            locText.innerHTML = `Sensor ${id}<br>Temp: ${temp.toFixed(1)}°C`;
+            banner.style.display = 'flex';
+        }
+        
+        // Move câmera para o incidente
+        this.focusCamera(x, z);
+    }
+
+    removeFireEffect(id) {
+        const alertObj = this.activeAlerts[id];
+        if (alertObj) {
+            this.scene.remove(alertObj.mesh);
+            this.scene.remove(alertObj.light);
+            // Limpa da memória
+            alertObj.mesh.geometry.dispose();
+            alertObj.mesh.material.dispose();
+            delete this.activeAlerts[id];
+        }
+
+        // Se não houver mais nenhum alerta, esconde o banner
+        if (Object.keys(this.activeAlerts).length === 0) {
+            const banner = document.getElementById('alert-banner-3d');
+            if(banner) banner.style.display = 'none';
+        }
     }
 
     loadPlantFloor() {
         const loader = new THREE.TextureLoader();
-        
         loader.load(this.plantImage, (texture) => {
-            // Ajusta proporção baseado na imagem
             const aspect = texture.image.width / texture.image.height;
             const planeHeight = this.plantWidth / aspect;
-            
             const geometry = new THREE.PlaneGeometry(this.plantWidth, planeHeight);
-            const material = new THREE.MeshStandardMaterial({ 
-                map: texture, 
-                side: THREE.DoubleSide,
-                roughness: 0.8
-            });
-            
+            const material = new THREE.MeshBasicMaterial({ map: texture, side: THREE.DoubleSide });
             const plane = new THREE.Mesh(geometry, material);
-            plane.rotation.x = -Math.PI / 2; // Deita o plano horizontalmente
+            plane.rotation.x = -Math.PI / 2; 
             plane.receiveShadow = true;
             this.scene.add(plane);
-            
-            // Adiciona um "grid" sutil para ajudar na perspectiva
-            const gridHelper = new THREE.GridHelper(300, 50, 0x444444, 0x222222);
-            gridHelper.position.y = -0.1; // Logo abaixo da planta
-            this.scene.add(gridHelper);
-
         }, undefined, (err) => {
-            console.error("Erro ao carregar imagem da planta. Verifique se está rodando em um servidor local.", err);
-            // Fallback visual se a imagem falhar (chão cinza)
-            const geometry = new THREE.PlaneGeometry(200, 200);
-            const material = new THREE.MeshStandardMaterial({ color: 0x333333 });
-            const plane = new THREE.Mesh(geometry, material);
-            plane.rotation.x = -Math.PI / 2;
-            this.scene.add(plane);
+            console.error("Erro na imagem. Usando chão provisório.");
+            const p = new THREE.Mesh(
+                new THREE.PlaneGeometry(200, 150),
+                new THREE.MeshBasicMaterial({ color: 0x27ae60, side: THREE.DoubleSide })
+            );
+            p.rotation.x = -Math.PI/2;
+            this.scene.add(p);
         });
     }
 
-    // Cria a "Casa de Bomba" (Um bloco azulado/metálico)
     addPumpHouse(x, z, label) {
-        const geometry = new THREE.BoxGeometry(15, 10, 20); // Largura, Altura, Profundidade
-        const material = new THREE.MeshStandardMaterial({ color: 0x3498db });
+        const geometry = new THREE.BoxGeometry(15, 12, 20);
+        const material = new THREE.MeshStandardMaterial({ color: 0x34495e, roughness: 0.2 });
         const pump = new THREE.Mesh(geometry, material);
-        
-        pump.position.set(x, 5, z); // Y=5 (metade da altura) para ficar no chão
+        pump.position.set(x, 6, z);
         pump.castShadow = true;
-        pump.userData = { type: 'pump', label: label };
-        
         this.scene.add(pump);
-        this.objects.push(pump);
-        this.addLabel(x, 12, z, label); // Rótulo flutuante
     }
 
-    // Cria Hidrantes (Cilindros Amarelos/Vermelhos)
-    addHydrant(x, z, label) {
-        const geometry = new THREE.CylinderGeometry(1, 1, 4, 16);
-        const material = new THREE.MeshStandardMaterial({ color: 0xf1c40f });
-        const hydrant = new THREE.Mesh(geometry, material);
-        
-        hydrant.position.set(x, 2, z);
+    addHydrant(x, z) {
+        // --- HIDRANTE PEQUENO ---
+        // Reduzi drasticamente as medidas aqui
+        const baseGeo = new THREE.CylinderGeometry(0.3, 0.3, 1.5, 12); // Muito menor
+        const material = new THREE.MeshStandardMaterial({ color: 0xff0000, roughness: 0.3 }); 
+        const hydrant = new THREE.Mesh(baseGeo, material);
+        hydrant.position.set(x, 0.75, z); // Ajustado para encostar no chão
         hydrant.castShadow = true;
-        hydrant.userData = { type: 'hydrant', label: label };
+
+        const top = new THREE.Mesh(new THREE.SphereGeometry(0.3), material);
+        top.position.y = 0.75;
+        hydrant.add(top);
+
+        const side = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, 1), material);
+        side.rotation.z = Math.PI / 2;
+        side.position.y = 0.3;
+        hydrant.add(side);
         
         this.scene.add(hydrant);
-        this.objects.push(hydrant);
-    }
-
-    // Simula um efeito de fogo/alerta em uma posição
-    triggerFireAlert(x, z, locationName) {
-        // 1. Atualizar UI HTML
-        const banner = document.getElementById('alert-banner-3d');
-        const locText = document.getElementById('alert-location-text');
-        if (banner) {
-            locText.textContent = locationName;
-            banner.style.display = 'flex';
-        }
-
-        // 2. Criar Marcador 3D (Esfera Pulsante Vermelha)
-        const geometry = new THREE.SphereGeometry(3, 32, 32);
-        const material = new THREE.MeshBasicMaterial({ 
-            color: 0xff0000, 
-            transparent: true, 
-            opacity: 0.8 
-        });
-        const fireMarker = new THREE.Mesh(geometry, material);
-        fireMarker.position.set(x, 5, z);
-        
-        // Adicionar uma luz vermelha no local do fogo
-        const fireLight = new THREE.PointLight(0xff0000, 2, 50);
-        fireLight.position.set(x, 10, z);
-        
-        this.scene.add(fireMarker);
-        this.scene.add(fireLight);
-        
-        this.alertMarkers.push({ mesh: fireMarker, light: fireLight, time: 0 });
-
-        // Focar câmera no alerta automaticamente
-        this.focusCamera(x, z);
     }
 
     focusCamera(x, z) {
-        const offset = 40;
-        // Animação suave da câmera (simulada)
-        // Em um projeto real, usaria TWEEN.js, aqui faremos um "pulo" direto mas suave pelo OrbitControls
-        this.controls.target.set(x, 0, z);
-        this.camera.position.set(x + offset, 40, z + offset);
-        this.controls.update();
-    }
-
-    // Cria rótulo HTML sobre o objeto 3D
-    addLabel(x, y, z, text) {
-        // Nota: Para rótulos perfeitos que seguem a câmera, precisaria projetar coordenadas 3D para 2D.
-        // Simplificação: Apenas log no console ou implementação futura.
-        // (Deixei comentado para não poluir o código se não tiver a função de projeção pronta)
-    }
-
-    onWindowResize() {
-        this.camera.aspect = this.container.clientWidth / this.container.clientHeight;
-        this.camera.updateProjectionMatrix();
-        this.renderer.setSize(this.container.clientWidth, this.container.clientHeight);
+        // Só foca se a câmera estiver longe
+        if (this.camera.position.y > 50) {
+            this.camera.position.set(x + 20, 30, z + 20);
+            this.controls.target.set(x, 0, z);
+        }
     }
 
     animate() {
         requestAnimationFrame(() => this.animate());
         this.controls.update();
 
-        // Animar Alertas (Pulsar)
+        // Animação de pulso para todos os alertas ativos
         const time = Date.now() * 0.005;
-        this.alertMarkers.forEach(alert => {
-            const scale = 1 + Math.sin(time * 3) * 0.3; // Pulsa tamanho
+        for (const id in this.activeAlerts) {
+            const alert = this.activeAlerts[id];
+            const scale = 1 + Math.sin(time * 5) * 0.2;
             alert.mesh.scale.set(scale, scale, scale);
-            alert.mesh.material.opacity = 0.5 + Math.sin(time * 5) * 0.5; // Pulsa transparência
-        });
+            alert.light.intensity = 2 + Math.sin(time * 10);
+        }
 
         this.renderer.render(this.scene, this.camera);
     }
 }
 
-// Inicializa quando a página carregar
 window.addEventListener('DOMContentLoaded', () => {
-    // Integração com o sistema existente
-    if (window.app) {
-        console.log("Sistema 3D Integrado ao App Principal");
-    }
-    
-    // Função global para o botão "Ver Local"
-    window.focarAlerta = function() {
-        // Lógica para focar no ultimo alerta
-        // Já feito automaticamente no trigger, mas pode ser refeito aqui
-    };
-
-    const digitalTwin = new DigitalTwin();
+    new DigitalTwin();
 });

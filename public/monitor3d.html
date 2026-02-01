@@ -24,30 +24,14 @@
                 <p class="subtitle">Enterprise Edition</p>
             </div>
         </div>
-        
         <div class="menu-items">
-            <a href="index.html" class="menu-item">
-                <i class="fas fa-video"></i><span>Câmeras</span>
-            </a>
-            <a href="dashboard.html" class="menu-item">
-                <i class="fas fa-chart-pie"></i><span>Dashboard</span>
-            </a>
-            <a href="monitor3d.html" class="menu-item active">
-                <i class="fas fa-cube"></i><span>Digital Twin 3D</span>
-            </a>
-            <a href="protocols.html" class="menu-item">
-                <i class="fas fa-file-medical-alt"></i><span>Protocolos</span>
-            </a>
-            <a href="cameras.html" class="menu-item">
-                <i class="fas fa-expand"></i><span>Tela Cheia</span>
-            </a>
-            <a href="settings.html" class="menu-item">
-                <i class="fas fa-cogs"></i><span>Configurações</span>
-            </a>
+            <a href="index.html" class="menu-item"><i class="fas fa-video"></i><span>Câmeras</span></a>
+            <a href="dashboard.html" class="menu-item"><i class="fas fa-chart-pie"></i><span>Dashboard</span></a>
+            <a href="monitor3d.html" class="menu-item active"><i class="fas fa-cube"></i><span>Digital Twin 3D</span></a>
+            <a href="protocols.html" class="menu-item"><i class="fas fa-file-medical-alt"></i><span>Protocolos</span></a>
         </div>
-        
         <div class="system-status">
-            <div class="status-indicator active"><div class="status-dot"></div><span>Online</span></div>
+            <div class="status-indicator active"><div class="status-dot"></div><span>Status</span></div>
             <div class="current-time" id="current-time">--:--:--</div>
         </div>
     </nav>
@@ -56,21 +40,14 @@
         <div class="overlay-ui">
             <div class="header-title-3d">
                 <h2><i class="fas fa-cube"></i> Planta Digital 3D</h2>
-                <p>Monitoramento Espacial em Tempo Real</p>
+                <p>Monitoramento Espacial</p>
             </div>
             
             <div class="controls-3d-panel">
                 <button class="btn-3d" id="btn-reset-view" title="Resetar Câmera"><i class="fas fa-compress-arrows-alt"></i></button>
-                <button class="btn-3d" id="btn-toggle-labels" title="Alternar Rótulos"><i class="fas fa-tag"></i></button>
-                <div class="legend-item">
-                    <span class="dot-legend pump"></span> Casa de Bomba
-                </div>
-                <div class="legend-item">
-                    <span class="dot-legend hydrant"></span> Hidrantes
-                </div>
-                <div class="legend-item">
-                    <span class="dot-legend alert"></span> Alerta de Fogo
-                </div>
+                <div class="legend-item"><span class="dot-legend pump"></span> Casa de Bomba</div>
+                <div class="legend-item"><span class="dot-legend hydrant"></span> Hidrantes</div>
+                <div class="legend-item"><span class="dot-legend alert"></span> Alerta</div>
             </div>
 
             <div class="alert-banner-3d" id="alert-banner-3d" style="display: none;">
@@ -78,14 +55,22 @@
                 <i class="fas fa-exclamation-triangle"></i>
                 <div class="alert-text-3d">
                     <strong>FOGO DETECTADO</strong>
-                    <span id="alert-location-text">Setor B - Caldeira</span>
+                    <span id="alert-location-text">Setor B</span>
                 </div>
-                <button class="btn-focus" onclick="focarAlerta()">VER LOCAL</button>
+            </div>
+            
+            <div class="alert-banner" id="alert-banner" style="display: none; position: absolute; top: 80px; left: 50%; transform: translateX(-50%); z-index: 20;">
+                <div class="alert-content">
+                    <i class="fas fa-info-circle"></i>
+                    <span id="alert-message">Aviso</span>
+                </div>
             </div>
         </div>
 
         <div id="canvas-container"></div>
     </main>
 
-    <script src="js/app.js"></script> <script src="js/monitor3d.js"></script> </body>
+    <script src="js/app.js"></script>
+    <script src="js/monitor3d.js"></script>
+</body>
 </html>
