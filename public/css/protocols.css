@@ -7,6 +7,7 @@
     max-width: 1400px;
     margin: 0 auto;
     padding: 20px;
+    padding-bottom: 50px;
 }
 
 .protocol-grid {
@@ -16,7 +17,7 @@
     align-items: start;
 }
 
-/* --- CARD PADRÃO --- */
+/* --- CARD DE FASE (ESTADO PADRÃO/INATIVO) --- */
 .phase-card {
     background: var(--bg-card);
     border: 1px solid var(--border-color);
@@ -28,12 +29,13 @@
     flex-direction: column;
     height: 100%;
     
-    /* Estado Inativo */
+    /* Visual Desativado */
     opacity: 0.6;
     filter: grayscale(0.8);
     transform: scale(0.98);
 }
 
+/* Badge Numérico (Bolinha) */
 .phase-badge {
     position: absolute;
     top: -15px;
@@ -61,7 +63,7 @@
     z-index: 10;
     border-width: 2px;
     
-    /* Pulso Amarelo/Dourado */
+    /* Pulso Amarelo/Dourado Padrão */
     border-color: #f59e0b;
     box-shadow: 0 0 25px rgba(245, 158, 11, 0.2);
     animation: softPulse 2s infinite ease-in-out;
@@ -79,7 +81,7 @@
     100% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0); border-color: #f59e0b; }
 }
 
-/* --- ESTADO CONCLUÍDO --- */
+/* --- ESTADO CONCLUÍDO (PASSADO) --- */
 .phase-card.completed {
     opacity: 0.8;
     filter: grayscale(0.2);
@@ -104,28 +106,136 @@
     letter-spacing: 1px;
 }
 
-/* --- CONTEÚDO INTERNO --- */
-.phase-header h2 { margin: 10px 0 5px 0; font-size: 18px; }
-.phase-role { font-size: 12px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 1px; }
-.contact-list { background: rgba(0,0,0,0.2); padding: 12px; border-radius: 8px; margin: 15px 0; }
-.contact-item { display: flex; align-items: center; gap: 8px; font-size: 13px; font-family: monospace; margin-bottom: 5px; }
-
-/* --- BOTÕES --- */
-.action-btn {
-    width: 100%; padding: 12px; border: none; border-radius: 8px; font-weight: bold; font-size: 14px; cursor: pointer; text-transform: uppercase; transition: all 0.2s; display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: auto;
+/* --- ESTADO CRÍTICO (NÍVEL 4) --- */
+.phase-card[data-phase="4"].active {
+    border-color: #ef4444;
+    background: rgba(239, 68, 68, 0.05);
+    animation: criticalPulse 1.5s infinite;
+}
+.phase-card[data-phase="4"].active .phase-badge {
+    background: #ef4444;
+    color: white;
 }
 
-/* Botão Inicial */
-.btn-activate { background: var(--text-primary); color: var(--bg-primary); }
-.btn-activate:hover { opacity: 0.9; transform: scale(1.02); }
+@keyframes criticalPulse {
+    0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.6); }
+    70% { box-shadow: 0 0 0 15px rgba(239, 68, 68, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+}
 
-/* Cores Iniciais */
+/* --- CONTEÚDO INTERNO DO CARD --- */
+.phase-header h2 { 
+    margin: 10px 0 5px 0; 
+    font-size: 18px; 
+    line-height: 1.2;
+}
+
+.phase-role { 
+    font-size: 12px; 
+    color: var(--text-secondary); 
+    text-transform: uppercase; 
+    letter-spacing: 1px; 
+    display: block; 
+}
+
+.phase-card p {
+    font-size: 14px;
+    color: var(--text-muted);
+    margin: 15px 0;
+    line-height: 1.5;
+    flex-grow: 1;
+}
+
+/* Lista de Contatos no Card */
+.contact-list-container {
+    margin-bottom: 20px;
+    background: rgba(0,0,0,0.2);
+    border-radius: 8px;
+    padding: 10px;
+}
+
+/* Linha de contato individual (gerada via JS) */
+.contact-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: rgba(255,255,255,0.05);
+    padding: 8px 12px;
+    margin-bottom: 5px;
+    border-radius: 6px;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+}
+
+.contact-row:last-child {
+    margin-bottom: 0;
+    border-bottom: none;
+}
+
+.contact-info {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 13px;
+    font-family: 'Inter', monospace;
+    color: var(--text-primary);
+}
+
+/* Mini botão de ligar (no card) */
+.btn-call-mini {
+    background: #3b82f6;
+    color: white;
+    border: none;
+    padding: 6px 12px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: bold;
+    cursor: pointer;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    transition: all 0.2s;
+}
+
+.btn-call-mini:hover {
+    background: #2563eb;
+    transform: scale(1.05);
+}
+
+/* --- BOTÃO DE ATIVAÇÃO INICIAL --- */
+.action-btn {
+    width: 100%; 
+    padding: 12px; 
+    border: none; 
+    border-radius: 8px; 
+    font-weight: bold; 
+    font-size: 14px; 
+    cursor: pointer; 
+    text-transform: uppercase; 
+    transition: all 0.2s; 
+    display: flex; 
+    align-items: center; 
+    justify-content: center; 
+    gap: 8px; 
+    margin-top: auto;
+}
+
+.btn-activate { 
+    background: var(--text-primary); 
+    color: var(--bg-primary); 
+}
+.btn-activate:hover { 
+    opacity: 0.9; 
+    transform: scale(1.02); 
+}
+
+/* Cores Específicas dos Botões Iniciais */
 .phase-card[data-phase="1"] .btn-activate { background: #f59e0b; color: black; }
 .phase-card[data-phase="2"] .btn-activate { background: #f97316; color: white; }
 .phase-card[data-phase="3"] .btn-activate { background: #ef4444; color: white; }
-.phase-card[data-phase="4"] .btn-activate { background: #7f1d1d; color: white; }
+.phase-card[data-phase="4"] .btn-activate { background: #7f1d1d; color: white; border: 1px solid #ef4444; }
 
-/* --- BOTÕES DINÂMICOS (NOVOS) --- */
+/* --- CONTROLES DE FLUXO (DINÂMICOS) --- */
 .flow-controls {
     display: flex;
     flex-direction: column;
@@ -134,6 +244,43 @@
     animation: fadeIn 0.5s ease;
 }
 
+@keyframes fadeIn { 
+    from { opacity: 0; transform: translateY(10px); } 
+    to { opacity: 1; transform: translateY(0); } 
+}
+
+/* Botão 3CX (Chamada Automática) */
+.btn-3cx {
+    background: #3b82f6; /* Azul 3CX */
+    color: white;
+    border: none;
+    padding: 12px;
+    border-radius: 6px;
+    font-weight: 800;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    text-transform: uppercase;
+    box-shadow: 0 4px 10px rgba(59, 130, 246, 0.3);
+    transition: all 0.2s;
+    animation: pulseBlue 2s infinite;
+}
+
+.btn-3cx:hover {
+    background: #2563eb;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 15px rgba(59, 130, 246, 0.5);
+}
+
+@keyframes pulseBlue {
+    0% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.4); }
+    70% { box-shadow: 0 0 0 10px rgba(59, 130, 246, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0); }
+}
+
+/* Botão Escalar Nível */
 .btn-escalate {
     background: transparent;
     border: 2px solid var(--text-primary);
@@ -147,9 +294,15 @@
     justify-content: center;
     gap: 8px;
     transition: all 0.2s;
+    text-transform: uppercase;
+    font-size: 12px;
 }
-.btn-escalate:hover { background: rgba(255,255,255,0.1); transform: translateX(5px); }
+.btn-escalate:hover { 
+    background: rgba(255,255,255,0.1); 
+    transform: translateX(5px); 
+}
 
+/* Botão Resolver */
 .btn-resolve {
     background: var(--success-color);
     color: white;
@@ -162,23 +315,152 @@
     align-items: center;
     justify-content: center;
     gap: 8px;
+    text-transform: uppercase;
+    font-size: 12px;
 }
-.btn-resolve:hover { filter: brightness(1.1); }
+.btn-resolve:hover { 
+    filter: brightness(1.1); 
+}
 
-@keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-
-/* --- CORREÇÕES DO MODAL --- */
+/* --- MODAIS (GERAL) --- */
 .modal-overlay {
-    position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
-    background: rgba(0, 0, 0, 0.85); backdrop-filter: blur(4px); z-index: 9999;
-    display: none; align-items: center; justify-content: center;
+    position: fixed; 
+    top: 0; 
+    left: 0; 
+    width: 100vw; 
+    height: 100vh;
+    background: rgba(0, 0, 0, 0.85); 
+    backdrop-filter: blur(4px); 
+    z-index: 9999; 
+    display: none; 
+    align-items: center; 
+    justify-content: center;
+    opacity: 0;
+    transition: opacity 0.3s ease;
 }
-.modal-overlay.active { display: flex; }
+
+.modal-overlay.active {
+    display: flex;
+    opacity: 1;
+}
+
 .modal-content {
-    background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 12px;
-    width: 90%; max-width: 500px; max-height: 90vh; display: flex; flex-direction: column;
+    background: var(--bg-card); 
+    border: 1px solid var(--border-color); 
+    border-radius: 12px;
+    
+    /* Tamanho Padrão Ajustado para Configurações Grandes */
+    width: 95%; 
+    max-width: 800px; 
+    max-height: 90vh; 
+    
+    display: flex; 
+    flex-direction: column;
+    box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+    transform: scale(0.9);
+    transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
-.modal-header, .modal-footer { flex-shrink: 0; padding: 20px; background: var(--bg-secondary); }
-.modal-body { overflow-y: auto; padding: 20px; flex-grow: 1; }
-.radio-check-item { background: rgba(255,255,255,0.05); padding: 15px; border-radius: 8px; margin-bottom: 10px; border-left: 3px solid #f59e0b; }
-.radio-freq { color: #f59e0b; font-weight: bold; display: block; margin-bottom: 5px; }
+
+.modal-overlay.active .modal-content {
+    transform: scale(1);
+}
+
+.modal-header, .modal-footer { 
+    flex-shrink: 0; 
+    padding: 20px; 
+    background: var(--bg-secondary); 
+}
+
+.modal-header h3 {
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 18px;
+}
+
+.modal-body { 
+    overflow-y: auto; 
+    padding: 20px; 
+    flex-grow: 1; 
+}
+
+.close-modal {
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    font-size: 18px;
+    cursor: pointer;
+    position: absolute;
+    right: 20px;
+    top: 20px;
+}
+.close-modal:hover { color: var(--text-primary); }
+
+/* --- ESTILOS DO MODAL DE CONFIGURAÇÕES (GRID) --- */
+.settings-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr; /* Duas colunas */
+    gap: 20px;
+}
+
+/* Responsividade para mobile: 1 coluna */
+@media (max-width: 600px) {
+    .settings-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+.settings-section {
+    background: rgba(0,0,0,0.2);
+    padding: 15px;
+    border-radius: 8px;
+    border-top: 3px solid var(--text-secondary);
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.settings-section h4 {
+    margin: 0 0 5px 0;
+    color: var(--text-primary);
+    font-size: 14px;
+    text-transform: uppercase;
+    border-bottom: 1px solid rgba(255,255,255,0.1);
+    padding-bottom: 5px;
+}
+
+.full-input { 
+    width: 100%; 
+    padding: 10px; 
+    background: var(--bg-body); 
+    border: 1px solid var(--border-color); 
+    color: white; 
+    border-radius: 4px; 
+    font-size: 13px; 
+}
+
+.form-group label { 
+    display: block; 
+    font-size: 12px; 
+    margin-bottom: 4px; 
+    color: var(--text-muted); 
+}
+
+/* --- ESTILOS DO MODAL DE RÁDIO --- */
+.radio-check-item { 
+    background: rgba(255,255,255,0.05); 
+    padding: 15px; 
+    border-radius: 8px; 
+    margin-bottom: 10px; 
+    border-left: 3px solid #f59e0b; 
+}
+
+.radio-freq { 
+    font-family: 'Courier New', monospace; 
+    font-size: 18px; 
+    color: #f59e0b; 
+    font-weight: bold; 
+    display: block; 
+    margin-bottom: 5px; 
+}

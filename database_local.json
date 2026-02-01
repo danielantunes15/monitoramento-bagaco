@@ -3,6 +3,48 @@
   "sensorHistory": {},
   "systemLogs": [
     {
+      "id": 1769945177986,
+      "timestamp": "2026-02-01T11:26:17.986Z",
+      "action": "ALERT_TRIGGERED",
+      "user": "Inteligência Artificial",
+      "details": "PROTOCOLOS: Fase 2 Iniciada (Combate). Contatando: Equipe de Brigadistas"
+    },
+    {
+      "id": 1769945177984,
+      "timestamp": "2026-02-01T11:26:17.984Z",
+      "action": "EMERGENCY_PHASE_2",
+      "user": "Operador",
+      "details": "Acionou equipe: Equipe de Brigadistas"
+    },
+    {
+      "id": 1769945169943,
+      "timestamp": "2026-02-01T11:26:09.943Z",
+      "action": "ALERT_TRIGGERED",
+      "user": "Inteligência Artificial",
+      "details": "PROTOCOLOS: Fase 1 Iniciada (Operacional). Contatando: Supervisor Industrial e TST"
+    },
+    {
+      "id": 1769945169895,
+      "timestamp": "2026-02-01T11:26:09.895Z",
+      "action": "EMERGENCY_PHASE_1",
+      "user": "Operador",
+      "details": "Acionou equipe: Supervisor Industrial e TST"
+    },
+    {
+      "id": 1769944944804,
+      "timestamp": "2026-02-01T11:22:24.804Z",
+      "action": "ALERT_TRIGGERED",
+      "user": "Inteligência Artificial",
+      "details": "PROTOCOLOS: Fase 1 Iniciada (Operacional). Contatando: Supervisor Industrial e TST"
+    },
+    {
+      "id": 1769944944793,
+      "timestamp": "2026-02-01T11:22:24.793Z",
+      "action": "EMERGENCY_PHASE_1",
+      "user": "Operador Web",
+      "details": "Acionou equipe: Supervisor Industrial e TST"
+    },
+    {
       "id": 1769944517574,
       "timestamp": "2026-02-01T11:15:17.574Z",
       "action": "ALERT_TRIGGERED",
@@ -123,6 +165,24 @@
     }
   ],
   "notifications": [
+    {
+      "id": 1769945177985,
+      "type": "critical",
+      "message": "PROTOCOLOS: Fase 2 Iniciada (Combate). Contatando: Equipe de Brigadistas",
+      "timestamp": "2026-02-01T11:26:17.985Z"
+    },
+    {
+      "id": 1769945169941,
+      "type": "critical",
+      "message": "PROTOCOLOS: Fase 1 Iniciada (Operacional). Contatando: Supervisor Industrial e TST",
+      "timestamp": "2026-02-01T11:26:09.941Z"
+    },
+    {
+      "id": 1769944944801,
+      "type": "critical",
+      "message": "PROTOCOLOS: Fase 1 Iniciada (Operacional). Contatando: Supervisor Industrial e TST",
+      "timestamp": "2026-02-01T11:22:24.801Z"
+    },
     {
       "id": 1769944517574,
       "type": "critical",
