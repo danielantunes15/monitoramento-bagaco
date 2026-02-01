@@ -18,7 +18,11 @@ const server = http.createServer(app);
 const wss = new WebSocket.Server({ server });
 
 app.use(cors());
-app.use(express.json());
+
+// --- CORREÇÃO DO ERRO 413 (Payload Too Large) ---
+// Aumentamos o limite para 50mb para aceitar a geometria 3D pesada
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
 const START_TIME = Date.now();
 const MAX_HISTORY = 1000;
@@ -110,7 +114,6 @@ async function triggerWebhooks(type, payload) {
     if(webhooks) {
         webhooks.forEach(async (hook) => {
             // Verifica se o evento 'all' ou o tipo específico está na lista de eventos
-            // Assumindo que 'events' é um array JSONB no Supabase
             const events = Array.isArray(hook.events) ? hook.events : JSON.parse(hook.events || '[]');
             if (events.includes(type) || events.includes('all')) {
                 try { await axios.post(hook.url, payload); } catch (e) {}
@@ -253,15 +256,25 @@ app.get('/api/v1/config/layout', async (req, res) => {
     res.json(data || {});
 });
 
+// Rota POST atualizada para aceitar geometry e pile_scale
 app.post('/api/v1/config/layout', async (req, res) => {
-    const { pile_position, hydrants } = req.body;
+    // Agora desestruturamos geometry e pile_scale do corpo da requisição
+    const { pile_position, hydrants, pile_scale, geometry } = req.body;
+    
     const { error } = await supabase.from('digital_twin_config').upsert({ 
         id: 'main_layout', 
         pile_position, 
         hydrants,
+        pile_scale, // Salva a escala
+        geometry,   // Salva a modelagem (array de vértices)
         updated_at: new Date()
     });
-    if (error) return res.status(500).json(error);
+    
+    if (error) {
+        console.error("Erro ao salvar no Supabase:", error);
+        return res.status(500).json(error);
+    }
+    
     res.json({ success: true });
 });
 
