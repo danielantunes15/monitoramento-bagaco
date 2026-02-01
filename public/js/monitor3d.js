@@ -187,8 +187,8 @@ class DigitalTwin {
 
     createMainPileAndHydrants() {
         // --- 1. Criar a Pilha Gigante ---
-        const pileHeight = 18;
-        const pileRadius = 25;
+        const pileHeight = 27;
+        const pileRadius = 45;
         
         const geometry = this.createComplexPileGeometry(pileRadius, pileHeight);
 
