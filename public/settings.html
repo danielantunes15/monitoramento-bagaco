@@ -70,6 +70,79 @@
                 </div>
             </section>
 
+            <section class="settings-card">
+                <div class="card-header">
+                    <h3><i class="fas fa-server"></i> Gerenciamento de Dispositivos</h3>
+                    <p>Cadastre câmeras IP e sensores MQTT reais ou simulados.</p>
+                </div>
+                <div class="card-body">
+                    
+                    <div class="tabs" style="display:flex; gap:10px; margin-bottom:20px; border-bottom:1px solid var(--border-color);">
+                        <button class="tab-btn active" onclick="settingsManager.switchTab('cameras')" style="padding:10px; background:none; border:none; color:var(--text-primary); cursor:pointer; border-bottom:2px solid var(--accent-color);">Câmeras</button>
+                        <button class="tab-btn" onclick="settingsManager.switchTab('sensors')" style="padding:10px; background:none; border:none; color:var(--text-secondary); cursor:pointer;">Sensores</button>
+                    </div>
+
+                    <div id="tab-cameras">
+                        <div class="webhook-form">
+                            <h4>Nova Câmera</h4>
+                            <div class="form-row">
+                                <div class="input-group flex-2">
+                                    <label>Nome da Câmera</label>
+                                    <input type="text" id="cam-name" placeholder="Ex: Pilha Norte">
+                                </div>
+                                <div class="input-group">
+                                    <label>Localização</label>
+                                    <input type="text" id="cam-loc" placeholder="Setor A">
+                                </div>
+                            </div>
+                            <div class="form-row">
+                                <div class="input-group flex-2">
+                                    <label>URL do Stream (RTSP/MJPEG) ou IP</label>
+                                    <input type="text" id="cam-url" placeholder="http://192.168.1.100:8080/video">
+                                </div>
+                                <div class="input-group">
+                                    <label>Tipo</label>
+                                    <select id="cam-type" style="width:100%; padding:10px; background:var(--bg-card); border:1px solid var(--border-color); color:var(--text-primary); border-radius:6px;">
+                                        <option value="normal">Padrão</option>
+                                        <option value="ir">Infravermelho (IR)</option>
+                                        <option value="thermal">Térmica</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="checkbox-group">
+                                <label><input type="checkbox" id="cam-sim"> Modo Simulação (Ignora URL)</label>
+                            </div>
+                            <button class="btn-primary" onclick="settingsManager.addCamera()">Salvar Câmera</button>
+                        </div>
+                        <div id="cameras-list-ui" class="list-group">
+                            </div>
+                    </div>
+
+                    <div id="tab-sensors" style="display:none;">
+                        <div class="webhook-form">
+                            <h4>Novo Sensor</h4>
+                            <div class="form-row">
+                                <div class="input-group">
+                                    <label>Nome/ID Visual</label>
+                                    <input type="text" id="sens-name" placeholder="Sensor 01">
+                                </div>
+                                <div class="input-group flex-2">
+                                    <label>Tópico MQTT</label>
+                                    <input type="text" id="sens-topic" placeholder="usina/bagaco/sensor/1">
+                                </div>
+                            </div>
+                            <div class="checkbox-group">
+                                <label><input type="checkbox" id="sens-sim"> Dados Simulados</label>
+                            </div>
+                            <button class="btn-primary" onclick="settingsManager.addSensor()">Salvar Sensor</button>
+                        </div>
+                        <div id="sensors-list-ui" class="list-group">
+                            </div>
+                    </div>
+
+                </div>
+            </section>
+
             <section class="settings-card" style="border-color: #ef4444; background: rgba(239, 68, 68, 0.05);">
                 <div class="card-header" style="background: rgba(239, 68, 68, 0.1);">
                     <h3 style="color: #ef4444;"><i class="fas fa-fire-alt"></i> Integração Bombeiros</h3>

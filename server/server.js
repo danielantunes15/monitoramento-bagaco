@@ -23,6 +23,16 @@ app.use(express.json());
 // --- Carrega Dados Persistidos (Não perde nada ao reiniciar) ---
 console.log('📂 Carregando base de dados local...');
 let memoryDb = loadData();
+
+// --- INICIALIZAÇÃO SEGURA DA BASE DE DADOS ---
+// Garante que as listas existam para evitar erros de "undefined"
+if (!memoryDb.cameras) memoryDb.cameras = [];
+if (!memoryDb.sensors) memoryDb.sensors = [];
+if (!memoryDb.webhooks) memoryDb.webhooks = [];
+if (!memoryDb.systemLogs) memoryDb.systemLogs = [];
+if (!memoryDb.notifications) memoryDb.notifications = [];
+if (!memoryDb.sensorHistory) memoryDb.sensorHistory = {};
+
 const MAX_HISTORY = 1000;
 const START_TIME = Date.now();
 
@@ -70,8 +80,12 @@ const mailTransporter = nodemailer.createTransport({
 // Inicializa Bot Telegram (Opcional)
 let bot = null;
 if (CONFIG.telegramToken !== 'SEU_TELEGRAM_TOKEN_AQUI') {
-    bot = new Telegraf(CONFIG.telegramToken);
-    bot.launch().catch(err => console.error("Erro Telegram:", err));
+    try {
+        bot = new Telegraf(CONFIG.telegramToken);
+        bot.launch().catch(err => console.error("Erro Telegram:", err));
+    } catch (e) {
+        console.log("Telegram não configurado.");
+    }
 }
 
 // --- Logger de Auditoria ---
@@ -185,12 +199,14 @@ function formatUptime(seconds) {
 app.get('/api/v1/export/csv', (req, res) => {
     logSystemAction('DATA_EXPORT', 'Usuario_Web', 'Exportou relatório CSV');
     let csvContent = "SensorID,Timestamp,Data,Hora,Temperatura(C)\n";
-    Object.keys(memoryDb.sensorHistory).forEach(id => {
-        memoryDb.sensorHistory[id].forEach(r => {
-            const d = new Date(r.time);
-            csvContent += `${id},${d.toISOString()},${d.toLocaleDateString()},${d.toLocaleTimeString()},${r.val.toFixed(2)}\n`;
+    if (memoryDb.sensorHistory) {
+        Object.keys(memoryDb.sensorHistory).forEach(id => {
+            memoryDb.sensorHistory[id].forEach(r => {
+                const d = new Date(r.time);
+                csvContent += `${id},${d.toISOString()},${d.toLocaleDateString()},${d.toLocaleTimeString()},${r.val.toFixed(2)}\n`;
+            });
         });
-    });
+    }
     res.header('Content-Type', 'text/csv').attachment('belfire_report.csv').send(csvContent);
 });
 
@@ -198,12 +214,52 @@ app.get('/api/v1/export/csv', (req, res) => {
 app.get('/api/v1/logs', (req, res) => res.json(memoryDb.systemLogs));
 app.get('/api/v1/webhooks', (req, res) => res.json(memoryDb.webhooks));
 app.post('/api/v1/webhooks', (req, res) => {
-    memoryDb.webhooks.push({ id: Date.now(), ...req.body });
+    const webhook = { id: Date.now(), ...req.body };
+    memoryDb.webhooks.push(webhook);
     persist();
     res.json({ success: true });
 });
 app.delete('/api/v1/webhooks/:id', (req, res) => {
-    memoryDb.webhooks = memoryDb.webhooks.filter(w => w.id !== parseInt(req.params.id));
+    const id = parseInt(req.params.id);
+    memoryDb.webhooks = memoryDb.webhooks.filter(w => w.id !== id);
+    persist();
+    res.json({ success: true });
+});
+
+// === [NOVO] GERENCIAMENTO DE CÂMERAS ===
+app.get('/api/v1/cameras', (req, res) => res.json(memoryDb.cameras || []));
+
+app.post('/api/v1/cameras', (req, res) => {
+    const newCam = { 
+        id: Date.now(), 
+        ...req.body, 
+        status: 'active' 
+    };
+    memoryDb.cameras.push(newCam);
+    persist();
+    res.json({ success: true, camera: newCam });
+});
+
+app.delete('/api/v1/cameras/:id', (req, res) => {
+    const id = parseInt(req.params.id);
+    memoryDb.cameras = memoryDb.cameras.filter(c => c.id !== id);
+    persist();
+    res.json({ success: true });
+});
+
+// === [NOVO] GERENCIAMENTO DE SENSORES ===
+app.get('/api/v1/sensors', (req, res) => res.json(memoryDb.sensors || []));
+
+app.post('/api/v1/sensors', (req, res) => {
+    const newSensor = { id: Date.now(), ...req.body };
+    memoryDb.sensors.push(newSensor);
+    persist();
+    res.json({ success: true, sensor: newSensor });
+});
+
+app.delete('/api/v1/sensors/:id', (req, res) => {
+    const id = parseInt(req.params.id);
+    memoryDb.sensors = memoryDb.sensors.filter(s => s.id !== id);
     persist();
     res.json({ success: true });
 });
@@ -215,10 +271,11 @@ cron.schedule('0 8 * * *', async () => {
     logSystemAction('EMAIL_REPORT', 'CronJob', 'Gerando relatório automático');
 
     let csvContent = "SensorID,Timestamp,Val\n"; 
-    // (Lógica simplificada de geração CSV para o email)
-    Object.keys(memoryDb.sensorHistory).forEach(id => {
-        memoryDb.sensorHistory[id].forEach(r => { csvContent += `${id},${r.time},${r.val}\n`; });
-    });
+    if (memoryDb.sensorHistory) {
+        Object.keys(memoryDb.sensorHistory).forEach(id => {
+            memoryDb.sensorHistory[id].forEach(r => { csvContent += `${id},${r.time},${r.val}\n`; });
+        });
+    }
 
     try {
         await mailTransporter.sendMail({
@@ -236,6 +293,7 @@ cron.schedule('0 8 * * *', async () => {
 
 // --- INTELIGÊNCIA: Análise de Tendência (Delta T) ---
 function analyzeRisk(sensorId, currentTemp) {
+    if (!memoryDb.sensorHistory) return;
     const history = memoryDb.sensorHistory[sensorId];
     if (!history || history.length < 5) return;
 
@@ -244,6 +302,7 @@ function analyzeRisk(sensorId, currentTemp) {
 
     if (delta > 3) {
         const msg = `Predição de Risco: Sensor ${sensorId} subiu ${delta.toFixed(1)}°C rapidamente!`;
+        // Evita flood de alertas iguais
         const lastAlert = memoryDb.notifications.find(n => n.message === msg && (Date.now() - n.id < 30000));
         
         if (!lastAlert) notify('prediction', msg);

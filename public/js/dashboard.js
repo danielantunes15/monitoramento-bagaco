@@ -1,99 +1,80 @@
 class SensorDashboard {
     constructor() {
-        this.sensors = {
-            1: { id: 1, temp: 45, status: 'active', location: 'Pilha Norte - Superior', battery: 98, signal: 'Excelente' },
-            2: { id: 2, temp: 48, status: 'active', location: 'Pilha Norte - Central', battery: 95, signal: 'Excelente' },
-            3: { id: 3, temp: 52, status: 'active', location: 'Pilha Sul - Superior', battery: 82, signal: 'Bom' },
-            4: { id: 4, temp: 42, status: 'active', location: 'Pilha Sul - Central', battery: 68, signal: 'Moderado' }
-        };
+        this.sensors = []; 
         this.chart = null;
         this.init();
     }
     
-    init() {
+    async init() {
+        await this.loadSensors();
         this.setupListeners();
         this.initCharts();
         this.renderSensors();
         this.updateTime();
+        
         setInterval(() => this.simulateData(), 2000);
         setInterval(() => this.updateTime(), 1000);
     }
 
-    setupListeners() {
-        // --- FUNÇÃO DE EXPORTAÇÃO REAL ---
-        document.getElementById('export-data').addEventListener('click', () => {
-            this.exportCSV();
-        });
+    async loadSensors() {
+        const demoSensors = [
+            { id: 1, name: "Sensor Demo 1", location: 'Pilha Norte - Topo', temp: 45, battery: 98, isSimulated: true },
+            { id: 2, name: "Sensor Demo 2", location: 'Pilha Norte - Base', temp: 48, battery: 95, isSimulated: true },
+            { id: 3, name: "Sensor Demo 3", location: 'Pilha Sul - Topo', temp: 52, battery: 82, isSimulated: true },
+            { id: 4, name: "Sensor Demo 4", location: 'Pilha Sul - Base', temp: 42, battery: 68, isSimulated: true }
+        ];
 
-        document.getElementById('refresh-data').addEventListener('click', () => {
-            this.simulateData();
-            // Efeito visual no botão
-            const btn = document.getElementById('refresh-data');
-            const originalHtml = btn.innerHTML;
-            btn.innerHTML = '<i class="fas fa-spin fa-sync-alt"></i> Atualizando...';
-            setTimeout(() => btn.innerHTML = originalHtml, 1000);
-        });
-        
-        // Listeners dos Modais
-        document.getElementById('close-sensor-modal').addEventListener('click', () => document.getElementById('sensor-modal').classList.remove('active'));
-        document.getElementById('close-modal-btn').addEventListener('click', () => document.getElementById('sensor-modal').classList.remove('active'));
-    }
-
-    async exportCSV() {
         try {
-            const btn = document.getElementById('export-data');
-            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Baixando...';
+            const res = await fetch('/api/v1/sensors');
+            if (!res.ok) throw new Error("API Offline");
             
-            // Chama a API do Backend
-            const response = await fetch('/api/v1/export/csv');
-            
-            if (response.ok) {
-                const blob = await response.blob();
-                const url = window.URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.style.display = 'none';
-                a.href = url;
-                // Nome do arquivo com data
-                const date = new Date().toISOString().split('T')[0];
-                a.download = `relatorio_belfire_${date}.csv`;
-                
-                document.body.appendChild(a);
-                a.click();
-                window.URL.revokeObjectURL(url);
-                
-                setTimeout(() => alert('Relatório baixado com sucesso! Verifique sua pasta de Downloads.'), 500);
+            const dbSensors = await res.json();
+
+            if (Array.isArray(dbSensors) && dbSensors.length > 0) {
+                console.log("Sensores reais carregados.");
+                this.sensors = dbSensors.map(s => ({
+                    ...s,
+                    temp: s.temp || 25, 
+                    battery: s.battery || 100,
+                    location: s.topic || 'MQTT Device'
+                }));
             } else {
-                alert('Erro ao gerar relatório no servidor.');
+                this.sensors = demoSensors;
             }
-        } catch (error) {
-            console.error('Erro no download:', error);
-            alert('Falha na conexão ao tentar exportar.');
-        } finally {
-            document.getElementById('export-data').innerHTML = '<i class="fas fa-download"></i> Exportar';
+        } catch (e) {
+            this.sensors = demoSensors;
         }
     }
 
-    // --- (Restante do código igual ao anterior: renderSensors, simulateData, etc...) ---
-    // Vou manter as funções essenciais para garantir que o dashboard funcione
-    
+    setupListeners() {
+        document.getElementById('export-data')?.addEventListener('click', () => this.exportCSV());
+        document.getElementById('refresh-data')?.addEventListener('click', () => {
+            this.loadSensors().then(() => this.renderSensors());
+        });
+        document.getElementById('close-sensor-modal')?.addEventListener('click', () => document.getElementById('sensor-modal').classList.remove('active'));
+        document.getElementById('close-modal-btn')?.addEventListener('click', () => document.getElementById('sensor-modal').classList.remove('active'));
+    }
+
     renderSensors() {
         const grid = document.getElementById('sensors-grid');
+        if(!grid) return;
         grid.innerHTML = ''; 
-        Object.values(this.sensors).forEach(sensor => {
+        
+        this.sensors.forEach(sensor => {
             let statusClass = sensor.temp > 80 ? 'critical' : (sensor.temp > 65 ? 'warning' : '');
             const html = `
-                <div class="sensor-card ${statusClass}" data-id="${sensor.id}">
+                <div class="sensor-card ${statusClass}" data-id="${sensor.id}" id="sensor-card-${sensor.id}">
                     <div class="sensor-header">
-                        <div class="sensor-id"><i class="fas fa-thermometer"></i> Sensor #${sensor.id}</div>
+                        <div class="sensor-id"><i class="fas fa-thermometer"></i> ${sensor.name || 'Sensor ' + sensor.id}</div>
                         <div class="sensor-status active"><div class="status-dot"></div> Ativo</div>
                     </div>
                     <div class="sensor-temperature">
-                        <div class="temp-value" id="temp-${sensor.id}">${sensor.temp.toFixed(1)}°C</div>
+                        <div class="temp-value" id="temp-${sensor.id}">${(sensor.temp || 0).toFixed(1)}°C</div>
                         <div class="temp-label">Temperatura</div>
                     </div>
                     <div class="sensor-info">
-                        <div class="info-row"><i class="fas fa-map-marker-alt"></i> ${sensor.location}</div>
-                        <div class="info-row"><i class="fas fa-battery-half"></i> Bateria: ${sensor.battery}%</div>
+                        <div class="info-row"><i class="fas fa-map-marker-alt"></i> ${sensor.location || 'N/A'}</div>
+                        <div class="info-row"><i class="fas fa-battery-half"></i> Bateria: ${sensor.battery || '--'}%</div>
                     </div>
                     <div class="sensor-controls">
                         <button class="sensor-btn" onclick="dashboard.openModal(${sensor.id})">
@@ -103,35 +84,70 @@ class SensorDashboard {
                 </div>`;
             grid.insertAdjacentHTML('beforeend', html);
         });
-        document.getElementById('sensor-count').textContent = `${Object.keys(this.sensors).length} sensores`;
-        document.getElementById('active-sensors').textContent = `${Object.keys(this.sensors).length}/${Object.keys(this.sensors).length}`;
+
+        const countEl = document.getElementById('sensor-count');
+        if(countEl) countEl.textContent = `${this.sensors.length} sensores`;
+        const activeEl = document.getElementById('active-sensors');
+        if(activeEl) activeEl.textContent = `${this.sensors.length}/${this.sensors.length}`;
     }
 
     simulateData() {
         let globalSum = 0;
         let count = 0;
-        Object.keys(this.sensors).forEach(key => {
-            const sensor = this.sensors[key];
-            sensor.temp = Math.max(20, Math.min(100, sensor.temp + (Math.random() - 0.5) * 1.5));
-            const el = document.getElementById(`temp-${sensor.id}`);
-            if(el) {
-                el.textContent = `${sensor.temp.toFixed(1)}°C`;
-                el.style.color = sensor.temp > 80 ? 'var(--danger-color)' : (sensor.temp > 65 ? 'var(--warning-color)' : 'var(--text-primary)');
+        
+        this.sensors.forEach(sensor => {
+            if (sensor.isSimulated) {
+                // --- LÓGICA DE SIMULAÇÃO SUAVE ---
+                const target = 45; // Temperatura base para sensores
+                
+                // Ruído natural
+                let change = (Math.random() - 0.5) * 0.5;
+                
+                // Tende a voltar ao normal
+                if (sensor.temp > target + 5) change -= 0.2;
+                if (sensor.temp < target - 5) change += 0.2;
+                
+                // Evento raro de pico (1%)
+                if (Math.random() < 0.01) change += 3.0;
+
+                sensor.temp = Math.max(20, Math.min(100, sensor.temp + change));
+                this.updateSensorUI(sensor);
             }
-            globalSum += sensor.temp;
+            globalSum += sensor.temp || 0;
             count++;
         });
-        const avg = globalSum / count;
-        document.getElementById('current-temp').textContent = `${avg.toFixed(1)}°C`;
-        this.updateChart(avg);
-        this.updateGauge(avg);
+
+        if (count > 0) {
+            const avg = globalSum / count;
+            const curEl = document.getElementById('current-temp');
+            if(curEl) curEl.textContent = `${avg.toFixed(1)}°C`;
+            this.updateChart(avg);
+            this.updateGauge(avg);
+        }
+    }
+
+    updateSensorUI(sensor) {
+        const el = document.getElementById(`temp-${sensor.id}`);
+        const card = document.getElementById(`sensor-card-${sensor.id}`);
+        
+        if(el) {
+            el.textContent = `${sensor.temp.toFixed(1)}°C`;
+            el.style.color = sensor.temp > 80 ? 'var(--danger-color)' : (sensor.temp > 65 ? 'var(--warning-color)' : 'var(--text-primary)');
+        }
+        if (card) {
+            card.classList.remove('critical', 'warning');
+            if (sensor.temp > 80) card.classList.add('critical');
+            else if (sensor.temp > 65) card.classList.add('warning');
+        }
     }
 
     openModal(id) {
         document.getElementById('sensor-modal').classList.add('active');
-        // Renderiza gráfico simples no modal
+        // Gráfico demo no modal
         new Chart(document.getElementById('sensorDetailChart'), {
-            type: 'bar', data: { labels: ['A', 'B', 'C'], datasets: [{ label: 'Histórico', data: [40, 45, 42], backgroundColor: '#10b981' }] }
+            type: 'bar', 
+            data: { labels: ['-30m', '-20m', '-10m', 'Agora'], datasets: [{ label: 'Histórico', data: [40, 42, 45, 48], backgroundColor: '#3b82f6' }] },
+            options: { responsive: true, plugins: { legend: {display:false} } }
         });
     }
 
@@ -160,8 +176,26 @@ class SensorDashboard {
         this.chart.update('none');
     }
 
-    updateTime() { document.getElementById('current-time').textContent = new Date().toLocaleTimeString(); }
+    updateTime() { 
+        const el = document.getElementById('current-time');
+        if(el) el.textContent = new Date().toLocaleTimeString(); 
+    }
+    
+    async exportCSV() { 
+        try {
+            const response = await fetch('/api/v1/export/csv');
+            if(response.ok) {
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.style.display = 'none';
+                a.href = url;
+                a.download = `relatorio.csv`;
+                document.body.appendChild(a);
+                a.click();
+            }
+        } catch(e) { alert('Erro exportação'); }
+    }
 }
 
-// Inicializa globalmente
 document.addEventListener('DOMContentLoaded', () => { window.dashboard = new SensorDashboard(); });
