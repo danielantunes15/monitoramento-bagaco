@@ -1,0 +1,241 @@
+/* =========================================
+   ESTILOS ESPECÍFICOS: PROTOCOLOS DE EMERGÊNCIA
+   ========================================= */
+
+/* --- CORREÇÃO DO MODAL (CENTRALIZAÇÃO E Z-INDEX) --- */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(0, 0, 0, 0.85); /* Fundo mais escuro para foco */
+    backdrop-filter: blur(4px); /* Desfoque no fundo */
+    z-index: 9999; /* Z-INDEX ALTO: Garante que fique na frente do menu lateral */
+    display: none;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.modal-overlay.active {
+    display: flex;
+    opacity: 1;
+}
+
+.modal-content {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    width: 90%;
+    max-width: 500px;
+    max-height: 90vh; /* Limite de altura */
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+    transform: scale(0.9);
+    transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.modal-overlay.active .modal-content {
+    transform: scale(1);
+}
+
+.modal-header, .modal-footer {
+    flex-shrink: 0;
+    padding: 20px;
+    background: var(--bg-secondary);
+}
+
+.modal-body {
+    overflow-y: auto; /* Scroll apenas no conteúdo interno */
+    padding: 20px;
+    flex-grow: 1;
+}
+
+/* --- LAYOUT DE GRID (QUADROS LADO A LADO) --- */
+.protocol-container {
+    max-width: 1400px; /* Largura total maior para caber os cards */
+    margin: 0 auto;
+    padding: 20px;
+}
+
+/* Aqui voltamos para o GRID em vez de Timeline vertical */
+.protocol-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); /* Responsivo */
+    gap: 25px;
+    align-items: start; /* Alinha os cards no topo */
+}
+
+/* CARDS DE FASE */
+.phase-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 25px;
+    position: relative;
+    opacity: 0.6; /* Desativado visualmente */
+    transition: all 0.3s ease;
+    filter: grayscale(0.8);
+    display: flex;
+    flex-direction: column;
+    height: 100%; /* Faz todos terem a mesma altura */
+}
+
+/* Removemos a linha da timeline e ajustamos a "bolinha" */
+.phase-badge {
+    position: absolute;
+    top: -15px;
+    left: 20px;
+    width: 35px;
+    height: 35px;
+    border-radius: 50%;
+    background: #334155;
+    color: white;
+    font-weight: bold;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 4px solid var(--bg-primary); /* Borda da cor do fundo da página */
+    z-index: 2;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+}
+
+/* --- ESTADOS (ATIVO / CONCLUÍDO) --- */
+.phase-card.active {
+    opacity: 1;
+    filter: grayscale(0);
+    border-width: 2px; /* Borda mais grossa no ativo */
+    border-color: var(--accent-color);
+    transform: translateY(-5px);
+    box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+    z-index: 10;
+}
+
+.phase-card.completed {
+    opacity: 0.8;
+    filter: grayscale(0.2);
+    border-color: var(--success-color);
+    background: rgba(16, 185, 129, 0.05);
+}
+
+.phase-card.completed .phase-badge { background: var(--success-color); }
+.phase-card.completed::after {
+    content: '✔ OK';
+    position: absolute;
+    top: 15px; right: 15px;
+    color: var(--success-color);
+    font-weight: 900;
+    font-size: 14px;
+}
+
+/* --- CORES ESPECÍFICAS POR FASE --- */
+/* Fase 1 - Amarelo */
+.phase-card[data-phase="1"].active { border-color: #f59e0b; } 
+.phase-card[data-phase="1"].active .phase-badge { background: #f59e0b; color: black; }
+
+/* Fase 2 - Laranja */
+.phase-card[data-phase="2"].active { border-color: #f97316; } 
+.phase-card[data-phase="2"].active .phase-badge { background: #f97316; }
+
+/* Fase 3 - Vermelho */
+.phase-card[data-phase="3"].active { border-color: #ef4444; } 
+.phase-card[data-phase="3"].active .phase-badge { background: #ef4444; }
+
+/* Fase 4 - Crítico (Pulsante) */
+.phase-card[data-phase="4"].active { 
+    border-color: #ef4444; 
+    background: rgba(239, 68, 68, 0.1); 
+    animation: pulseCritical 2s infinite; 
+}
+.phase-card[data-phase="4"].active .phase-badge { 
+    background: #ef4444; 
+    animation: flash 1s infinite; 
+}
+
+@keyframes pulseCritical { 
+    0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); } 
+    70% { box-shadow: 0 0 0 15px rgba(239, 68, 68, 0); } 
+    100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); } 
+}
+
+/* --- TIPOGRAFIA INTERNA --- */
+.phase-header { margin-top: 10px; margin-bottom: 15px; }
+.phase-header h2 { margin: 0; font-size: 18px; line-height: 1.2; }
+.phase-role { 
+    font-size: 12px; 
+    color: var(--text-secondary); 
+    text-transform: uppercase; 
+    letter-spacing: 1px; 
+    display: block; 
+    margin-top: 5px;
+}
+
+.phase-card p {
+    font-size: 14px;
+    color: var(--text-muted);
+    margin-bottom: 15px;
+    flex-grow: 1; /* Empurra o conteúdo para baixo */
+}
+
+.contact-list { 
+    background: rgba(0,0,0,0.2); 
+    padding: 12px; 
+    border-radius: 8px; 
+    margin-bottom: 15px; 
+}
+.contact-item { 
+    display: flex; 
+    align-items: center; 
+    gap: 8px; 
+    margin-bottom: 5px; 
+    font-size: 13px;
+    font-family: monospace; 
+}
+
+/* --- BOTÕES DE AÇÃO --- */
+.action-btn {
+    width: 100%; 
+    padding: 12px; 
+    border: none; 
+    border-radius: 8px; 
+    font-weight: bold; 
+    font-size: 14px; 
+    cursor: pointer; 
+    text-transform: uppercase; 
+    transition: all 0.2s; 
+    display: flex; 
+    align-items: center; 
+    justify-content: center; 
+    gap: 8px;
+    margin-top: auto; /* Joga o botão para o final do card */
+}
+
+.btn-activate { background: var(--text-primary); color: var(--bg-primary); }
+.btn-activate:hover { opacity: 0.9; transform: scale(1.02); }
+
+/* Cores dos Botões por Fase */
+.phase-card[data-phase="1"] .btn-activate { background: #f59e0b; color: black; }
+.phase-card[data-phase="2"] .btn-activate { background: #f97316; color: white; }
+.phase-card[data-phase="3"] .btn-activate { background: #ef4444; color: white; }
+.phase-card[data-phase="4"] .btn-activate { background: #7f1d1d; color: white; border: 2px solid #ef4444; }
+.phase-card[data-phase="4"].completed .btn-activate { display: none; }
+
+/* --- CHECKLIST DE RÁDIO --- */
+.radio-check-item {
+    background: rgba(255,255,255,0.05);
+    padding: 15px;
+    border-radius: 8px;
+    margin-bottom: 10px;
+    border-left: 3px solid var(--accent-color);
+}
+.radio-freq {
+    font-family: 'Courier New', monospace;
+    font-size: 18px;
+    color: #f59e0b;
+    font-weight: bold;
+    display: block;
+    margin-bottom: 5px;
+}
