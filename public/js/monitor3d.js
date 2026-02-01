@@ -1,6 +1,7 @@
 /**
  * BEL FIRE - Digital Twin 3D Engine
  * Versão Integrada: Recebe dados reais do app.js
+ * Atualizado: Casa de Bombas menor e na posição -27, -60
  */
 
 class DigitalTwin {
@@ -17,7 +18,6 @@ class DigitalTwin {
         this.plantWidth = 200; 
         
         // Mapeamento: Onde fica cada sensor no mapa 3D?
-        // Você pode ajustar o X e Z para bater com a posição real na planta
         this.sensorLocations = {
             '1': { x: 20, z: 20, label: "Setor A" },
             '2': { x: 60, z: -40, label: "Setor B" },
@@ -69,7 +69,9 @@ class DigitalTwin {
         this.loadPlantFloor();
 
         // --- 6. Objetos Estáticos ---
-        this.addPumpHouse(-50, -30, "Casa de Bombas");
+        
+        // >>> POSIÇÃO ATUALIZADA (-27, -60) <<<
+        this.addPumpHouse(-27, -60, "Casa de Bombas");
         
         // Hidrantes (Posições correspondentes aos sensores para exemplo)
         this.addHydrant(20, 20);   // Perto do Sensor 1
@@ -101,12 +103,10 @@ class DigitalTwin {
         if (!location) return;
 
         // Lógica de Alerta
-        // Se for crítico E ainda não tiver alerta ativo para esse sensor
         if ((status === 'critical' || temp > 80) && !this.activeAlerts[sensorId]) {
             console.log(`🔥 FOGO detectado no Sensor ${sensorId} (${temp}°C)`);
             this.createFireEffect(sensorId, location.x, location.z, temp);
         } 
-        // Se voltou ao normal e tinha alerta, remove o fogo
         else if (status !== 'critical' && temp <= 80 && this.activeAlerts[sensorId]) {
             console.log(`✅ Sensor ${sensorId} normalizado.`);
             this.removeFireEffect(sensorId);
@@ -114,8 +114,7 @@ class DigitalTwin {
     }
 
     createFireEffect(id, x, z, temp) {
-        // 1. Visual do Fogo (Esfera Pulsante)
-        const geometry = new THREE.SphereGeometry(4, 32, 32); // Tamanho do fogo
+        const geometry = new THREE.SphereGeometry(4, 32, 32); 
         const material = new THREE.MeshBasicMaterial({ 
             color: 0xff3300, 
             transparent: true, 
@@ -124,17 +123,14 @@ class DigitalTwin {
         const fireMesh = new THREE.Mesh(geometry, material);
         fireMesh.position.set(x, 2, z);
 
-        // 2. Luz do Fogo
         const fireLight = new THREE.PointLight(0xff4500, 3, 40);
         fireLight.position.set(x, 5, z);
 
         this.scene.add(fireMesh);
         this.scene.add(fireLight);
 
-        // Guarda referências para poder remover depois
         this.activeAlerts[id] = { mesh: fireMesh, light: fireLight };
 
-        // Atualiza UI HTML
         const banner = document.getElementById('alert-banner-3d');
         const locText = document.getElementById('alert-location-text');
         if (banner) {
@@ -142,7 +138,6 @@ class DigitalTwin {
             banner.style.display = 'flex';
         }
         
-        // Move câmera para o incidente
         this.focusCamera(x, z);
     }
 
@@ -151,13 +146,11 @@ class DigitalTwin {
         if (alertObj) {
             this.scene.remove(alertObj.mesh);
             this.scene.remove(alertObj.light);
-            // Limpa da memória
             alertObj.mesh.geometry.dispose();
             alertObj.mesh.material.dispose();
             delete this.activeAlerts[id];
         }
 
-        // Se não houver mais nenhum alerta, esconde o banner
         if (Object.keys(this.activeAlerts).length === 0) {
             const banner = document.getElementById('alert-banner-3d');
             if(banner) banner.style.display = 'none';
@@ -187,21 +180,24 @@ class DigitalTwin {
     }
 
     addPumpHouse(x, z, label) {
-        const geometry = new THREE.BoxGeometry(15, 12, 20);
+        // >>> TAMANHO REDUZIDO NOVAMENTE <<<
+        // Anterior: (10, 8, 14) -> Agora: (7, 5, 10)
+        const geometry = new THREE.BoxGeometry(7, 5, 10);
         const material = new THREE.MeshStandardMaterial({ color: 0x34495e, roughness: 0.2 });
         const pump = new THREE.Mesh(geometry, material);
-        pump.position.set(x, 6, z);
+        
+        // Posição Y = Altura/2 (5/2 = 2.5) para ficar exatamente no chão
+        pump.position.set(x, 2.5, z); 
         pump.castShadow = true;
         this.scene.add(pump);
     }
 
     addHydrant(x, z) {
         // --- HIDRANTE PEQUENO ---
-        // Reduzi drasticamente as medidas aqui
-        const baseGeo = new THREE.CylinderGeometry(0.3, 0.3, 1.5, 12); // Muito menor
+        const baseGeo = new THREE.CylinderGeometry(0.3, 0.3, 1.5, 12); 
         const material = new THREE.MeshStandardMaterial({ color: 0xff0000, roughness: 0.3 }); 
         const hydrant = new THREE.Mesh(baseGeo, material);
-        hydrant.position.set(x, 0.75, z); // Ajustado para encostar no chão
+        hydrant.position.set(x, 0.75, z);
         hydrant.castShadow = true;
 
         const top = new THREE.Mesh(new THREE.SphereGeometry(0.3), material);
@@ -217,7 +213,6 @@ class DigitalTwin {
     }
 
     focusCamera(x, z) {
-        // Só foca se a câmera estiver longe
         if (this.camera.position.y > 50) {
             this.camera.position.set(x + 20, 30, z + 20);
             this.controls.target.set(x, 0, z);
@@ -228,7 +223,6 @@ class DigitalTwin {
         requestAnimationFrame(() => this.animate());
         this.controls.update();
 
-        // Animação de pulso para todos os alertas ativos
         const time = Date.now() * 0.005;
         for (const id in this.activeAlerts) {
             const alert = this.activeAlerts[id];
