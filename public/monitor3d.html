@@ -7,6 +7,9 @@
     
     <link rel="stylesheet" href="css/style.css">
     <link rel="stylesheet" href="css/dark-mode.css">
+    
+    <link rel="stylesheet" href="css/monitor3d.css">
+    
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     
@@ -18,29 +21,6 @@
             }
         }
     </script>
-
-    <style>
-        #canvas-container {
-            position: relative;
-            width: 100%;
-            height: calc(100vh - 100px);
-            background: #000;
-            border-radius: 12px;
-            overflow: hidden;
-            box-shadow: 0 0 20px rgba(0,0,0,0.5);
-        }
-        .overlay-ui {
-            position: absolute;
-            top: 20px; left: 20px;
-            background: rgba(0,0,0,0.7);
-            padding: 15px;
-            border-radius: 8px;
-            pointer-events: none;
-            border-left: 3px solid var(--accent-color);
-        }
-        .legend-item { display: flex; align-items: center; gap: 10px; margin-bottom: 5px; font-size: 12px; color: white; }
-        .color-dot { width: 12px; height: 12px; border-radius: 50%; }
-    </style>
 </head>
 <body class="dark-mode">
     
@@ -69,17 +49,44 @@
                 <p class="page-description">Monitoramento volumétrico das pilhas de bagaço</p>
             </div>
             <div class="header-controls">
-                <button class="btn-control" id="reset-cam"><i class="fas fa-video"></i> Resetar Câmera</button>
+                <button class="btn-control" id="reset-cam" onclick="digitalTwin.resetCamera()"><i class="fas fa-video"></i> Resetar Câmera</button>
             </div>
         </header>
 
         <div id="canvas-container">
             <div class="overlay-ui">
-                <h4 style="margin:0 0 10px 0; color:white;">Mapa de Calor</h4>
+                <h4>Mapa de Calor</h4>
                 <div class="legend-item"><div class="color-dot" style="background:#10b981"></div> Normal (< 50°C)</div>
                 <div class="legend-item"><div class="color-dot" style="background:#f59e0b"></div> Atenção (50°C - 70°C)</div>
                 <div class="legend-item"><div class="color-dot" style="background:#ef4444"></div> Crítico (> 70°C)</div>
             </div>
+
+            <button class="dev-toggle" onclick="digitalTwin.toggleDevMode()">
+                <i class="fas fa-tools"></i> Modo Dev
+            </button>
+
+            <div id="dev-toolbar" class="dev-toolbar hidden">
+                <button class="tool-btn active" id="btn-nav" onclick="digitalTwin.setTool('nav')">
+                    <i class="fas fa-arrows-alt"></i> Navegar
+                </button>
+                <button class="tool-btn" id="btn-move" onclick="digitalTwin.setTool('move')">
+                    <i class="fas fa-dolly"></i> Mover Pilha
+                </button>
+                <button class="tool-btn" id="btn-sculpt" onclick="digitalTwin.setTool('sculpt')">
+                    <i class="fas fa-mountain"></i> Modelar
+                </button>
+                <button class="tool-btn" id="btn-hydrant" onclick="digitalTwin.setTool('hydrant')">
+                    <i class="fas fa-plus-circle"></i> Add Hidrante
+                </button>
+                
+                <div class="toolbar-divider"></div>
+                
+                <button class="tool-btn" onclick="digitalTwin.exportConfig()">
+                    <i class="fas fa-save"></i> Salvar Layout
+                </button>
+            </div>
+            
+            <div id="brush-cursor" class="cursor-brush"></div>
         </div>
     </main>
 
