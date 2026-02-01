@@ -3,6 +3,62 @@
   "sensorHistory": {},
   "systemLogs": [
     {
+      "id": 1769949250476,
+      "timestamp": "2026-02-01T12:34:10.476Z",
+      "action": "ALERT_TRIGGERED",
+      "user": "Inteligência Artificial",
+      "details": "PROTOCOLOS: Fase 4 Iniciada (Externa). Contatando: Apoio Regional e Bombeiros (CBM)"
+    },
+    {
+      "id": 1769949250475,
+      "timestamp": "2026-02-01T12:34:10.475Z",
+      "action": "EMERGENCY_PHASE_4",
+      "user": "Operador",
+      "details": "Acionou equipe: Apoio Regional e Bombeiros (CBM)"
+    },
+    {
+      "id": 1769949247355,
+      "timestamp": "2026-02-01T12:34:07.355Z",
+      "action": "ALERT_TRIGGERED",
+      "user": "Inteligência Artificial",
+      "details": "PROTOCOLOS: Fase 3 Iniciada (Gestão). Contatando: Liderança Bahia Etanol"
+    },
+    {
+      "id": 1769949247248,
+      "timestamp": "2026-02-01T12:34:07.248Z",
+      "action": "EMERGENCY_PHASE_3",
+      "user": "Operador",
+      "details": "Acionou equipe: Liderança Bahia Etanol"
+    },
+    {
+      "id": 1769949243221,
+      "timestamp": "2026-02-01T12:34:03.221Z",
+      "action": "ALERT_TRIGGERED",
+      "user": "Inteligência Artificial",
+      "details": "PROTOCOLOS: Fase 2 Iniciada (Combate). Contatando: Equipe de Brigadistas"
+    },
+    {
+      "id": 1769949243219,
+      "timestamp": "2026-02-01T12:34:03.219Z",
+      "action": "EMERGENCY_PHASE_2",
+      "user": "Operador",
+      "details": "Acionou equipe: Equipe de Brigadistas"
+    },
+    {
+      "id": 1769949198688,
+      "timestamp": "2026-02-01T12:33:18.688Z",
+      "action": "ALERT_TRIGGERED",
+      "user": "Inteligência Artificial",
+      "details": "PROTOCOLOS: Fase 1 Iniciada (Operacional). Contatando: Supervisor Industrial e TST"
+    },
+    {
+      "id": 1769949198558,
+      "timestamp": "2026-02-01T12:33:18.558Z",
+      "action": "EMERGENCY_PHASE_1",
+      "user": "Operador",
+      "details": "Acionou equipe: Supervisor Industrial e TST"
+    },
+    {
       "id": 1769945177986,
       "timestamp": "2026-02-01T11:26:17.986Z",
       "action": "ALERT_TRIGGERED",
@@ -165,6 +221,30 @@
     }
   ],
   "notifications": [
+    {
+      "id": 1769949250475,
+      "type": "critical",
+      "message": "PROTOCOLOS: Fase 4 Iniciada (Externa). Contatando: Apoio Regional e Bombeiros (CBM)",
+      "timestamp": "2026-02-01T12:34:10.475Z"
+    },
+    {
+      "id": 1769949247353,
+      "type": "critical",
+      "message": "PROTOCOLOS: Fase 3 Iniciada (Gestão). Contatando: Liderança Bahia Etanol",
+      "timestamp": "2026-02-01T12:34:07.353Z"
+    },
+    {
+      "id": 1769949243221,
+      "type": "critical",
+      "message": "PROTOCOLOS: Fase 2 Iniciada (Combate). Contatando: Equipe de Brigadistas",
+      "timestamp": "2026-02-01T12:34:03.221Z"
+    },
+    {
+      "id": 1769949198685,
+      "type": "critical",
+      "message": "PROTOCOLOS: Fase 1 Iniciada (Operacional). Contatando: Supervisor Industrial e TST",
+      "timestamp": "2026-02-01T12:33:18.685Z"
+    },
     {
       "id": 1769945177985,
       "type": "critical",
