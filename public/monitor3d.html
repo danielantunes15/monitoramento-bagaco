@@ -24,14 +24,16 @@
                 <p class="subtitle">Enterprise Edition</p>
             </div>
         </div>
+        
         <div class="menu-items">
             <a href="index.html" class="menu-item"><i class="fas fa-video"></i><span>Câmeras</span></a>
             <a href="dashboard.html" class="menu-item"><i class="fas fa-chart-pie"></i><span>Dashboard</span></a>
             <a href="monitor3d.html" class="menu-item active"><i class="fas fa-cube"></i><span>Digital Twin 3D</span></a>
             <a href="protocols.html" class="menu-item"><i class="fas fa-file-medical-alt"></i><span>Protocolos</span></a>
         </div>
+        
         <div class="system-status">
-            <div class="status-indicator active"><div class="status-dot"></div><span>Status</span></div>
+            <div class="status-indicator active"><div class="status-dot"></div><span>Online</span></div>
             <div class="current-time" id="current-time">--:--:--</div>
         </div>
     </nav>
@@ -45,6 +47,9 @@
             
             <div class="controls-3d-panel">
                 <button class="btn-3d" id="btn-reset-view" title="Resetar Câmera"><i class="fas fa-compress-arrows-alt"></i></button>
+                <button class="btn-3d" id="btn-add-mode" title="Adicionar Novo Hidrante"><i class="fas fa-plus"></i></button>
+                <button class="btn-3d" id="btn-settings-3d" title="Configurações e Listas"><i class="fas fa-cog"></i></button>
+                
                 <div class="legend-item"><span class="dot-legend pump"></span> Casa de Bomba</div>
                 <div class="legend-item"><span class="dot-legend hydrant"></span> Hidrantes</div>
                 <div class="legend-item"><span class="dot-legend alert"></span> Alerta</div>
@@ -55,14 +60,61 @@
                 <i class="fas fa-exclamation-triangle"></i>
                 <div class="alert-text-3d">
                     <strong>FOGO DETECTADO</strong>
-                    <span id="alert-location-text">Setor B</span>
+                    <span id="alert-location-text">--</span>
                 </div>
             </div>
-            
-            <div class="alert-banner" id="alert-banner" style="display: none; position: absolute; top: 80px; left: 50%; transform: translateX(-50%); z-index: 20;">
-                <div class="alert-content">
-                    <i class="fas fa-info-circle"></i>
-                    <span id="alert-message">Aviso</span>
+        </div>
+
+        <div id="hydrant-modal" class="modal-3d-form" style="display: none;">
+            <div class="modal-3d-content">
+                <h3><i class="fas fa-plus-circle"></i> Novo Hidrante</h3>
+                <p>Coordenadas: <span id="click-coords">--</span></p>
+                
+                <div class="form-group">
+                    <label>Nome/Referência:</label>
+                    <input type="text" id="hydrant-label" placeholder="Ex: H-04" autocomplete="off">
+                </div>
+                
+                <div class="form-group">
+                    <label>Setor:</label>
+                    <select id="hydrant-sector">
+                        <option value="">Selecione um Setor...</option>
+                    </select>
+                </div>
+
+                <div class="modal-buttons">
+                    <button id="btn-cancel-hydrant" class="btn-cancel">Cancelar</button>
+                    <button id="btn-save-hydrant" class="btn-save">Salvar</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="settings-modal" class="modal-3d-form" style="display: none;">
+            <div class="modal-3d-content large-modal">
+                <div class="modal-header">
+                    <h3><i class="fas fa-cog"></i> Gestão de Ativos 3D</h3>
+                    <button id="btn-close-settings" class="close-btn"><i class="fas fa-times"></i></button>
+                </div>
+                
+                <div class="tabs">
+                    <button class="tab-btn active" data-tab="tab-hydrants">Hidrantes Cadastrados</button>
+                    <button class="tab-btn" data-tab="tab-sectors">Gerenciar Setores</button>
+                </div>
+
+                <div class="tab-content active" id="tab-hydrants">
+                    <div class="list-container" id="hydrants-list">
+                        <p class="empty-msg">Carregando hidrantes...</p>
+                    </div>
+                </div>
+
+                <div class="tab-content" id="tab-sectors">
+                    <div class="add-sector-row">
+                        <input type="text" id="new-sector-name" placeholder="Nome do novo setor">
+                        <button id="btn-add-sector" class="btn-small-add"><i class="fas fa-plus"></i></button>
+                    </div>
+                    <div class="list-container" id="sectors-list">
+                        <p class="empty-msg">Carregando setores...</p>
+                    </div>
                 </div>
             </div>
         </div>
