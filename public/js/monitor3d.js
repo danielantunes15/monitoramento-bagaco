@@ -43,7 +43,7 @@ class DigitalTwin {
     init() {
         this.scene = new THREE.Scene();
         this.scene.background = new THREE.Color(0x111827);
-        this.scene.fog = new THREE.Fog(0x111827, 50, 250); // Ajustei o fog para a nova escala
+        this.scene.fog = new THREE.Fog(0x111827, 50, 250);
 
         this.camera = new THREE.PerspectiveCamera(45, this.container.clientWidth / this.container.clientHeight, 0.1, 1000);
         this.camera.position.copy(this.cameraInitialPos);
@@ -72,7 +72,7 @@ class DigitalTwin {
         const plantMap = textureLoader.load('assets/3.png');
         plantMap.colorSpace = THREE.SRGBColorSpace; 
 
-        // Aumentei um pouco o chão para garantir que cobre toda a área nova
+        // Aumentei um pouco o chão para garantir que cobre toda a área
         const planeGeometry = new THREE.PlaneGeometry(400, 400);
         
         const planeMaterial = new THREE.MeshStandardMaterial({ 
@@ -92,9 +92,9 @@ class DigitalTwin {
         const ambientLight = new THREE.AmbientLight(0xffffff, 1.5); 
         this.scene.add(ambientLight);
 
-        // Ajustei a luz para iluminar bem a nova coordenada (119, 0, -60)
+        // Luz ajustada para iluminar a área
         const dirLight = new THREE.DirectionalLight(0xffffff, 2.0);
-        dirLight.position.set(150, 100, 0); // Luz vindo de cima/lado
+        dirLight.position.set(150, 100, 0); 
         dirLight.castShadow = true;
         
         dirLight.shadow.mapSize.width = 4096;
@@ -202,7 +202,6 @@ class DigitalTwin {
 
         this.mainPile = new THREE.Mesh(geometry, material);
         
-        // --- AQUI ESTÁ A MUDANÇA QUE VOCÊ PEDIU ---
         this.mainPile.position.copy(this.pilePosition); // Usa a posição definida no constructor
         
         this.mainPile.castShadow = true;
@@ -213,25 +212,29 @@ class DigitalTwin {
 
         this.updatePileHeatmap(25);
 
-        // --- 2. Criar os 6 Hidrantes ---
-        const numHydrants = 6;
-        const placementRadius = pileRadius + 4;
+        // --- 2. Criar os Hidrantes (POSIÇÃO MANUAL) ---
+        // A pilha está centrada em: X=150, Z=-85
+        // Edite os valores abaixo para mover os hidrantes.
+        const hydrantLocations = [
+            { x: 150, z: -15 },  // Leste da pilha
+            { x: 198, z: -18 },  // Oeste da pilha
+            { x: 198, z: -65 },  // Sul da pilha
+            { x: 198, z: -115 }, // Norte da pilha
+            { x: 113, z: -65 },  // Sudeste
+            { x: 113, z: -115 }  // Noroeste
+        ];
 
-        for (let i = 0; i < numHydrants; i++) {
-            const angle = (i / numHydrants) * Math.PI * 2;
-            
-            // Calculo relativo à NOVA posição da pilha
-            const x = this.mainPile.position.x + Math.cos(angle) * placementRadius;
-            const z = this.mainPile.position.z + Math.sin(angle) * placementRadius;
-
+        hydrantLocations.forEach(loc => {
             const hydrant = this.createHydrantMesh();
-            hydrant.position.set(x, 0, z);
             
-            // Olham para o centro da pilha nova
+            // Define a posição baseada na lista acima (Y=0 é o chão)
+            hydrant.position.set(loc.x, 0, loc.z);
+            
+            // Faz o hidrante "olhar" para o centro da pilha
             hydrant.lookAt(this.mainPile.position.x, 0, this.mainPile.position.z); 
             
             this.scene.add(hydrant);
-        }
+        });
     }
 
     setupWebSocket() {
