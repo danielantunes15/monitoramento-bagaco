@@ -2,6 +2,8 @@ class CameraSystem {
     constructor() {
         this.cameras = []; 
         this.recording = false;
+        // Variáveis de controle de Zoom Global
+        this.zoomState = {}; // Guarda {scale, x, y} por ID de câmera
         this.init();
     }
     
@@ -40,19 +42,25 @@ class CameraSystem {
         }
     }
 
+    // --- ATUALIZAÇÃO DE IMAGEM (COM SUPORTE A ZOOM) ---
     refreshCameraFrames() {
         const timestamp = new Date().getTime();
         this.cameras.forEach(cam => {
             if (!cam.isSimulated && cam.url) {
                 const img = document.getElementById(`cam-img-${cam.id}`);
                 if (img) {
-                    // Se estiver marcado que o proxy falhou, usa URL direta
+                    // Atualiza o SRC sem perder o zoom (o navegador lida com o replace)
+                    let newSrc = '';
                     if (img.dataset.useDirect === 'true') {
                         const separator = cam.url.includes('?') ? '&' : '?';
-                        img.src = `${cam.url}${separator}t=${timestamp}`;
+                        newSrc = `${cam.url}${separator}t=${timestamp}`;
                     } else {
-                        // Tenta pelo Proxy padrão
-                        img.src = `/api/v1/proxy/camera/${cam.id}?t=${timestamp}`;
+                        newSrc = `/api/v1/proxy/camera/${cam.id}?t=${timestamp}`;
+                    }
+                    
+                    // Só troca se o usuário NÃO estiver arrastando (para evitar flickering)
+                    if (!this.zoomState[cam.id]?.isDragging) {
+                        img.src = newSrc;
                     }
                 }
             }
@@ -63,7 +71,18 @@ class CameraSystem {
         const grid = document.getElementById('camera-grid');
         grid.innerHTML = '';
 
+        // --- DETECÇÃO DE CÂMERA ÚNICA ---
+        // Se tiver só 1 câmera, adiciona a classe especial no CSS
+        if (this.cameras.length === 1) {
+            grid.classList.add('single-view');
+        } else {
+            grid.classList.remove('single-view');
+        }
+
         this.cameras.forEach(cam => {
+            // Inicializa estado de zoom para esta câmera
+            this.zoomState[cam.id] = { scale: 1, x: 0, y: 0, isDragging: false };
+
             let videoContent = '';
             
             if (cam.isSimulated) {
@@ -74,12 +93,14 @@ class CameraSystem {
                     </div>
                 `;
             } else {
-                // Tenta carregar primeiro pelo Proxy. Se der erro, ativa o modo direto.
                 const proxyUrl = `/api/v1/proxy/camera/${cam.id}?t=${Date.now()}`;
                 
+                // Adicionei a classe 'zoomable-image' e o ID no container 'zoom-container-${cam.id}'
                 videoContent = `
-                    <div class="real-video-container" style="background:black; width:100%; height:100%; display:flex; align-items:center; justify-content:center; overflow:hidden;">
-                        <img id="cam-img-${cam.id}" src="${proxyUrl}" 
+                    <div class="real-video-container zoom-container" id="zoom-container-${cam.id}" 
+                         style="background:black; width:100%; height:100%; display:flex; align-items:center; justify-content:center; overflow:hidden;">
+                        
+                        <img id="cam-img-${cam.id}" class="zoomable-image" src="${proxyUrl}" 
                              style="width:100%; height:100%; object-fit:cover;" 
                              onerror="this.dataset.useDirect = 'true'; this.src='${cam.url}'">
                         
@@ -90,16 +111,10 @@ class CameraSystem {
                 `;
             }
 
-            let typeBadge = '';
-            if (cam.type === 'ir') typeBadge = '<span style="margin-left:5px; color:#10b981; font-size:10px; border:1px solid #10b981; padding:1px 4px; border-radius:4px;">IR</span>';
-            if (cam.type === 'thermal') typeBadge = '<span style="margin-left:5px; color:#f59e0b; font-size:10px; border:1px solid #f59e0b; padding:1px 4px; border-radius:4px;">TERM</span>';
-            const simBadge = cam.isSimulated ? '<span style="margin-left:auto; font-size:9px; background:#f59e0b; color:black; padding:2px 4px; border-radius:2px;">DEMO</span>' : '';
-
             const html = `
                 <div class="camera-card" id="card-${cam.id}" data-id="${cam.id}">
                     <div class="camera-header">
-                        <div class="camera-title"><i class="fas fa-video"></i> ${cam.name} ${typeBadge}</div>
-                        ${simBadge}
+                        <div class="camera-title"><i class="fas fa-video"></i> ${cam.name}</div>
                         <div class="camera-status active"><div class="status-dot"></div> LIVE</div>
                     </div>
                     <div class="camera-view">
@@ -113,14 +128,87 @@ class CameraSystem {
                         </div>
                     </div>
                     <div class="camera-controls">
+                        <button class="cam-control" onclick="window.cameraSystem.resetZoom(${cam.id})" title="Resetar Zoom"><i class="fas fa-compress"></i></button>
                         <button class="cam-control" onclick="window.cameraSystem.toggleRec(${cam.id})"><i class="fas fa-record-vinyl"></i></button>
                         <button class="cam-control" onclick="window.location.href='settings.html'"><i class="fas fa-cog"></i></button>
                     </div>
                 </div>
             `;
             grid.insertAdjacentHTML('beforeend', html);
+
+            // Se for câmera real, ativa o Zoom/Pan
+            if (!cam.isSimulated) {
+                setTimeout(() => this.enableZoomPan(cam.id), 100);
+            }
         });
     }
+
+    // --- NOVA FUNCIONALIDADE: ZOOM E PAN ---
+    enableZoomPan(id) {
+        const container = document.getElementById(`zoom-container-${id}`);
+        const img = document.getElementById(`cam-img-${id}`);
+        
+        if (!container || !img) return;
+
+        let startX, startY;
+
+        // 1. ZOOM COM A RODINHA (Wheel)
+        container.addEventListener('wheel', (e) => {
+            e.preventDefault();
+            const state = this.zoomState[id];
+
+            // Ajusta escala (0.1 por "clique" da roda)
+            const delta = e.deltaY * -0.001;
+            const newScale = Math.min(Math.max(1, state.scale + delta), 5); // Max Zoom 5x
+            
+            state.scale = newScale;
+            this.applyTransform(id);
+        });
+
+        // 2. INICIAR ARRASTO (MouseDown)
+        container.addEventListener('mousedown', (e) => {
+            if (this.zoomState[id].scale > 1) { // Só arrasta se tiver zoom
+                this.zoomState[id].isDragging = true;
+                startX = e.clientX - this.zoomState[id].x;
+                startY = e.clientY - this.zoomState[id].y;
+                container.style.cursor = 'grabbing';
+            }
+        });
+
+        // 3. MOVER (MouseMove)
+        container.addEventListener('mousemove', (e) => {
+            if (!this.zoomState[id].isDragging) return;
+            e.preventDefault();
+            
+            const state = this.zoomState[id];
+            state.x = e.clientX - startX;
+            state.y = e.clientY - startY;
+            
+            this.applyTransform(id);
+        });
+
+        // 4. PARAR ARRASTO (MouseUp/Leave)
+        const stopDrag = () => {
+            this.zoomState[id].isDragging = false;
+            container.style.cursor = 'grab';
+        };
+        container.addEventListener('mouseup', stopDrag);
+        container.addEventListener('mouseleave', stopDrag);
+    }
+
+    applyTransform(id) {
+        const img = document.getElementById(`cam-img-${id}`);
+        const state = this.zoomState[id];
+        if (img) {
+            img.style.transform = `translate(${state.x}px, ${state.y}px) scale(${state.scale})`;
+        }
+    }
+
+    resetZoom(id) {
+        this.zoomState[id] = { scale: 1, x: 0, y: 0, isDragging: false };
+        this.applyTransform(id);
+    }
+    // ---------------------------------------
 
     simulateTelemetry() {
         this.cameras.forEach(cam => {
