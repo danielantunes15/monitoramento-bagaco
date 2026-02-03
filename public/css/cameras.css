@@ -118,3 +118,276 @@
     background-color: var(--danger-color);
     color: white;
 }
+
+/* --- ESTILOS ORIGINAIS (MANTIDOS) --- */
+.camera-card {
+    background: #1e1e1e;
+    border-radius: 8px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    border: 1px solid #333;
+    transition: all 0.2s;
+    position: relative;
+}
+
+.camera-header {
+    background: #252525;
+    padding: 8px 12px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid #333;
+    height: 40px;
+}
+
+.camera-title {
+    font-weight: 600;
+    font-size: 0.9rem;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #e0e0e0;
+}
+
+.camera-status {
+    font-size: 0.75rem;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: #111;
+    padding: 2px 8px;
+    border-radius: 12px;
+    color: #888;
+}
+
+.camera-status.active {
+    color: #4ade80;
+    background: rgba(74, 222, 128, 0.1);
+}
+
+.status-dot {
+    width: 6px;
+    height: 6px;
+    background: currentColor;
+    border-radius: 50%;
+    box-shadow: 0 0 5px currentColor;
+}
+
+/* Área do Vídeo */
+.camera-view {
+    flex: 1;
+    position: relative;
+    background: #000;
+    overflow: hidden; /* Importante para o Zoom não vazar */
+}
+
+.video-placeholder {
+    width: 100%;
+    height: 100%;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Elementos Sobrepostos (Overlay) */
+.recording-indicator {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background: rgba(220, 38, 38, 0.9);
+    color: white;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 10px;
+    font-weight: bold;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    opacity: 0;
+    transition: opacity 0.2s;
+    z-index: 10;
+}
+
+.recording-indicator.active {
+    opacity: 1;
+    animation: pulse-red 2s infinite;
+}
+
+.video-overlay {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    padding: 20px 10px 10px 10px;
+    background: linear-gradient(to top, rgba(0,0,0,0.8), transparent);
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    pointer-events: none;
+    z-index: 5;
+}
+
+.video-time {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    color: rgba(255,255,255,0.7);
+}
+
+.video-temp {
+    font-size: 18px;
+    font-weight: bold;
+    color: white;
+    text-shadow: 0 2px 4px rgba(0,0,0,0.5);
+}
+
+/* Controles da Câmera (Botões Flutuantes) */
+.camera-controls {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    display: flex;
+    gap: 5px;
+    opacity: 0;
+    transition: opacity 0.2s;
+    z-index: 20;
+}
+
+.camera-card:hover .camera-controls {
+    opacity: 1;
+}
+
+.cam-control {
+    background: rgba(0,0,0,0.6);
+    border: none;
+    color: white;
+    width: 28px;
+    height: 28px;
+    border-radius: 4px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.cam-control:hover {
+    background: var(--primary-color);
+}
+
+.camera-info {
+    padding: 8px 12px;
+    font-size: 0.8rem;
+    color: #888;
+    background: #252525;
+    border-top: 1px solid #333;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+/* Animações */
+@keyframes pulse-red {
+    0% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.7); }
+    70% { box-shadow: 0 0 0 6px rgba(220, 38, 38, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0); }
+}
+
+/* Simulação Visual (Bagaço) */
+.video-simulation {
+    width: 100%;
+    height: 100%;
+    background: #1a1a1a;
+    position: relative;
+    overflow: hidden;
+}
+
+.bagaco-pile {
+    position: absolute;
+    bottom: -20%;
+    left: -10%;
+    width: 120%;
+    height: 80%;
+    background: radial-gradient(ellipse at center, #5d4037 0%, #3e2723 70%);
+    border-radius: 50% 50% 0 0;
+    transform: scaleX(1.5);
+    opacity: 0.8;
+}
+
+.temperature-glow {
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    pointer-events: none;
+    transition: background 0.5s;
+    mix-blend-mode: overlay;
+}
+
+.temperature-glow.medium {
+    background: radial-gradient(circle at 50% 70%, rgba(245, 158, 11, 0.4) 0%, transparent 60%);
+}
+
+.temperature-glow.high {
+    background: radial-gradient(circle at 50% 70%, rgba(239, 68, 68, 0.6) 0%, transparent 70%);
+    animation: heat-pulse 2s infinite alternate;
+}
+
+@keyframes heat-pulse {
+    from { opacity: 0.6; }
+    to { opacity: 1; }
+}
+
+/* Modos de Visão */
+body.night-vision .real-video-container img,
+body.night-vision .video-simulation {
+    filter: grayscale(100%) brightness(1.2) sepia(100%) hue-rotate(50deg) saturate(300%);
+}
+
+body.thermal-view .real-video-container img,
+body.thermal-view .video-simulation {
+    filter: contrast(150%) brightness(1.1) invert(100%) hue-rotate(180deg);
+}
+
+/* ==========================================================================
+   NOVO: MODO ÚNICO E ZOOM (ADICIONADO)
+   ========================================================================== */
+
+/* Layout quando só tem 1 câmera */
+.camera-grid.single-view {
+    display: flex !important; /* Força flex para centralizar */
+    justify-content: center;
+    align-items: center;
+    height: calc(100vh - 140px); /* Ocupa a altura disponível */
+    padding: 0;
+}
+
+.camera-grid.single-view .camera-card {
+    width: 100%;
+    max-width: 1200px; /* Limite para não ficar gigante em monitores ultrawide */
+    height: 100%;
+    max-height: 90vh;
+    border: 2px solid var(--primary-color); /* Destaque visual */
+    box-shadow: 0 0 20px rgba(0,0,0,0.5);
+}
+
+/* Ajuste da imagem no modo único para ser PROPORCIONAL */
+.camera-grid.single-view .real-video-container img {
+    object-fit: contain !important; /* Garante que a imagem inteira apareça sem corte */
+    background: #000;
+}
+
+/* Cursor de Zoom */
+.zoom-container {
+    cursor: grab; /* Mãozinha aberta */
+    overflow: hidden;
+}
+
+.zoom-container:active {
+    cursor: grabbing; /* Mãozinha fechada ao arrastar */
+}
+
+/* A imagem que será zoomada */
+.zoomable-image {
+    transition: transform 0.1s linear; /* Suavidade no zoom */
+    transform-origin: center center;
+    will-change: transform;
+}
