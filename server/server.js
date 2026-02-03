@@ -211,21 +211,111 @@ app.delete('/api/v1/webhooks/:id', async (req, res) => {
     res.json({ success: true });
 });
 
-// Câmeras
+// ========================================================
+// >>> GESTÃO DE CÂMERAS E PROXY <<<
+// ========================================================
+
+// 1. Buscar todas as câmeras
 app.get('/api/v1/cameras', async (req, res) => {
-    const { data } = await supabase.from('cameras').select('*');
-    res.json(data || []);
+    try {
+        const { data, error } = await supabase.from('cameras').select('*').order('id', { ascending: true });
+        if (error) throw error;
+        res.json(data || []);
+    } catch (e) {
+        console.error("Erro ao buscar câmeras:", e);
+        res.status(500).json({ error: e.message });
+    }
 });
 
+// 2. Salvar nova câmera (COM AUTOMATIZAÇÃO DE URL)
 app.post('/api/v1/cameras', async (req, res) => {
-    await supabase.from('cameras').insert([{ ...req.body, status: 'active' }]);
-    res.json({ success: true });
+    try {
+        let { name, location, url, type } = req.body;
+        
+        // SE O USUÁRIO DIGITOU SÓ O IP, MONTA A URL INTELBRAS
+        if (url && !url.startsWith('http') && !url.startsWith('rtsp')) {
+            const ip = url.trim();
+            // URL Padrão Intelbras com usuario e senha fixos
+            url = `http://${ip}/cgi-bin/snapshot.cgi?loginuse=admin&loginpas=bel123456`;
+        }
+
+        const { data, error } = await supabase
+            .from('cameras')
+            .insert([{ name, location, url, type, status: 'active' }])
+            .select();
+
+        if (error) throw error;
+        res.json({ success: true, data: data[0] });
+    } catch (e) {
+        console.error("Erro ao salvar câmera:", e);
+        res.status(500).json({ success: false, error: e.message });
+    }
 });
 
+// 3. Deletar câmera
 app.delete('/api/v1/cameras/:id', async (req, res) => {
-    await supabase.from('cameras').delete().eq('id', req.params.id);
-    res.json({ success: true });
+    try {
+        await supabase.from('cameras').delete().eq('id', req.params.id);
+        res.json({ success: true });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
 });
+
+// 4. PROXY DE IMAGEM BLINDADO (CORRIGE TELA PRETA E ERRO 503)
+app.get('/api/v1/proxy/camera/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        
+        // A. Busca a URL real no banco
+        const { data: cam } = await supabase
+            .from('cameras')
+            .select('url')
+            .eq('id', id)
+            .single();
+
+        if (!cam || !cam.url) {
+            console.log(`[PROXY] Câmera ${id} não encontrada ou sem URL.`);
+            return res.status(404).send("Câmera não encontrada");
+        }
+
+        // B. TRATAMENTO INTELIGENTE (Se for só IP, corrige de novo para garantir)
+        let targetUrl = cam.url;
+        if (!targetUrl.startsWith('http') && !targetUrl.startsWith('rtsp')) {
+            // Se o link no banco estiver "sujo" (só IP), usamos o padrão Intelbras
+            const ip = targetUrl.trim();
+            targetUrl = `http://${ip}/cgi-bin/snapshot.cgi?loginuse=admin&loginpas=bel123456`;
+        }
+
+        // C. Tenta baixar a imagem com Timeout curto (3s)
+        const response = await axios({
+            method: 'get',
+            url: targetUrl,
+            responseType: 'stream', 
+            timeout: 3000
+        });
+
+        // D. Repassa a imagem
+        res.setHeader('Content-Type', response.headers['content-type'] || 'image/jpeg');
+        response.data.pipe(res);
+
+    } catch (error) {
+        // LOGS DETALHADOS NO TERMINAL PARA DIAGNÓSTICO
+        console.error(`[PROXY ERROR] Falha na Câmera ${req.params.id}:`);
+        console.error(`--> Mensagem: ${error.message}`);
+        
+        if (error.code === 'ECONNREFUSED') console.error("--> CAUSA: Conexão recusada. O IP está errado ou a porta 80 está fechada.");
+        else if (error.code === 'ETIMEDOUT') console.error("--> CAUSA: Tempo esgotado. A câmera está desligada ou fora da rede.");
+        else if (error.response && error.response.status === 401) console.error("--> CAUSA: Senha ou Usuário incorretos.");
+        else if (error.code === 'ENOTFOUND') console.error("--> CAUSA: Domínio/IP não encontrado.");
+
+        res.status(503).send("Offline"); 
+    }
+});
+
+// ========================================================
+// >>> OUTRAS ROTAS (Sensores, 3D, etc) <<<
+// ========================================================
 
 // Sensores
 app.get('/api/v1/sensors', async (req, res) => {
@@ -243,115 +333,53 @@ app.delete('/api/v1/sensors/:id', async (req, res) => {
     res.json({ success: true });
 });
 
-// ========================================================
-// >>> ROTAS 3D: HIDRANTES E SETORES <<<
-// ========================================================
-
-// --- HIDRANTES ---
-// Buscar todos
+// --- HIDRANTES (3D) ---
 app.get('/api/hydrants', async (req, res) => {
     try {
-        const { data, error } = await supabase
-            .from('hydrants')
-            .select('*');
-            
-        if (error) {
-            console.error("Erro Supabase GET Hydrants:", error);
-            throw error;
-        }
+        const { data } = await supabase.from('hydrants').select('*');
         res.json(data || []);
-    } catch (error) {
-        res.status(500).json({ error: error.message });
-    }
+    } catch (error) { res.status(500).json({ error: error.message }); }
 });
 
-// Salvar novo
 app.post('/api/hydrants', async (req, res) => {
     try {
-        const { label, sector, x, z } = req.body;
-        console.log("Salvando hidrante:", req.body);
-
-        const { data, error } = await supabase
-            .from('hydrants')
-            .insert([{ label, sector, x, z }])
-            .select();
-
-        if (error) throw error;
+        const { data, error } = await supabase.from('hydrants').insert([req.body]).select();
+        if(error) throw error;
         res.json(data[0]); 
-    } catch (error) {
-        res.status(500).json({ error: error.message });
-    }
+    } catch (error) { res.status(500).json({ error: error.message }); }
 });
 
-// Deletar hidrante
 app.delete('/api/hydrants/:id', async (req, res) => {
     try {
-        console.log("Deletando hidrante ID:", req.params.id);
-        const { error } = await supabase
-            .from('hydrants')
-            .delete()
-            .eq('id', req.params.id);
-
-        if (error) throw error;
+        await supabase.from('hydrants').delete().eq('id', req.params.id);
         res.json({ success: true });
-    } catch (error) {
-        res.status(500).json({ error: error.message });
-    }
+    } catch (error) { res.status(500).json({ error: error.message }); }
 });
 
-// --- SETORES ---
-// Buscar todos
+// --- SETORES (3D) ---
 app.get('/api/sectors', async (req, res) => {
     try {
-        const { data, error } = await supabase
-            .from('sectors')
-            .select('*')
-            .order('name', { ascending: true });
-            
-        if (error) throw error;
+        const { data } = await supabase.from('sectors').select('*').order('name', { ascending: true });
         res.json(data || []);
-    } catch (error) {
-        res.status(500).json({ error: error.message });
-    }
+    } catch (error) { res.status(500).json({ error: error.message }); }
 });
 
-// Criar setor
 app.post('/api/sectors', async (req, res) => {
     try {
-        const { name } = req.body;
-        console.log("Salvando setor:", name);
-
-        const { data, error } = await supabase
-            .from('sectors')
-            .insert([{ name }])
-            .select();
-
-        if (error) throw error;
+        const { data, error } = await supabase.from('sectors').insert([req.body]).select();
+        if(error) throw error;
         res.json(data[0]); 
-    } catch (error) {
-        res.status(500).json({ error: error.message });
-    }
+    } catch (error) { res.status(500).json({ error: error.message }); }
 });
 
-// Deletar setor
 app.delete('/api/sectors/:id', async (req, res) => {
     try {
-        console.log("Deletando setor ID:", req.params.id);
-        const { error } = await supabase
-            .from('sectors')
-            .delete()
-            .eq('id', req.params.id);
-
-        if (error) throw error;
+        await supabase.from('sectors').delete().eq('id', req.params.id);
         res.json({ success: true });
-    } catch (error) {
-        res.status(500).json({ error: error.message });
-    }
+    } catch (error) { res.status(500).json({ error: error.message }); }
 });
-// ========================================================
 
-
-// --- ROTAS ANTIGAS DE CONFIG (Compatibilidade) ---
+// --- CONFIGURAÇÃO 3D (Compatibilidade) ---
 app.get('/api/v1/config/layout', async (req, res) => {
     const { data } = await supabase.from('digital_twin_config').select('*').eq('id', 'main_layout').single();
     res.json(data || {});
@@ -360,17 +388,11 @@ app.get('/api/v1/config/layout', async (req, res) => {
 app.post('/api/v1/config/layout', async (req, res) => {
     const { pile_position, hydrants, pile_scale, geometry } = req.body;
     const { error } = await supabase.from('digital_twin_config').upsert({ 
-        id: 'main_layout', 
-        pile_position, 
-        hydrants,
-        pile_scale, 
-        geometry,
-        updated_at: new Date()
+        id: 'main_layout', pile_position, hydrants, pile_scale, geometry, updated_at: new Date()
     });
     if (error) return res.status(500).json(error);
     res.json({ success: true });
 });
-
 
 // --- CRON JOBS (Relatório Diário) ---
 cron.schedule('0 8 * * *', async () => {
